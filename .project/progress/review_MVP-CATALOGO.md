@@ -17,3 +17,8 @@ Adaptacion documental: Codex corrigio la referencia al .venv del arnes en quicks
 Sin hallazgos criticos abiertos detectados en este alcance. No es una certificacion de seguridad ni auditoria WCAG completa; no incluye despliegue, cuentas, DB, estimador ni instalaciones remotas. Forgejo tiene respaldo de licencia en documentacion oficial/README; el archivo LICENSE de Codeberg no pudo leerse automaticamente. La excepcion a pruebas antes de implementacion de T002 queda documentada por Claude; las pruebas de comportamiento del validador si estan ejecutadas. No se simula evidencia previa inexistente.
 
 La funcionalidad del catalogo queda revisada y cerrada para esta entrega. El proyecto completo sigue en desarrollo; futuras funciones requieren nueva especificacion. Codigo de producto construido por Claude, infraestructura/documentacion y revision por Codex. Sin push en esta sesion de construccion.
+
+
+## Publicacion posterior al cierre local
+
+El usuario proporciono el repositorio y solicito construccion y trabajo automatico. Codex comprobo remoto vacio y cuenta AESRJ, integro feat/catalogo-comparacion en main mediante fast-forward y publico 969baf1ea08fa8a789df77c3fb1b097495f928ce sin force. HEAD local/remoto coinciden. Las referencias anteriores a ausencia de push describen la fase local previa. La CI remota se consulta separadamente; no se afirma aprobada antes de comprobarla. Sin despliegue de produccion.

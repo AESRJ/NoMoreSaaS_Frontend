@@ -16,3 +16,8 @@ Entorno aislado preparado por Codex para delegar la construccion a Claude. Snaps
 ## Revision y cierre por Codex
 
 Revision independiente: lint, 80 pruebas API, 56 web, build y 22 e2e correctas. Capturas examinadas y R1 visual resuelto en la ultima version de Claude sin necesidad de otra modificacion. Entrega cerrada por el revisor, sin autoaprobacion del constructor. Se conserva la excepcion de proceso T002 declarada en el informe, sin fabricar evidencia. Verificador de infraestructura ajustado para permitir consulta de una entrega cerrada y rechazar reinicio. Commits preparados por Codex con identidad AESRJ; no se usa git -c ni se amplian permisos del constructor para eludir la denegacion que encontro. Sin push.
+
+
+## Integracion y publicacion automatica
+
+Tras la instruccion de trabajo automatico del usuario, Codex verifico cuenta AESRJ, arbol limpio y remoto aun vacio. Integro por fast-forward en main y publico el incremento revisado 969baf1, sin force y sin despliegue. git ls-remote y HEAD coinciden. La revision y los commits de producto siguen atribuidos a AESRJ con asistencia de Claude/Codex documentada. La CI remota se verifica aparte. Preview localhost iniciado y salud/HTTP comprobados.
