@@ -1,6 +1,8 @@
 import { Link, useParams } from 'react-router';
 import { DifficultyBadge, LicenseBadge } from '../components/Badges.jsx';
+import { Icon } from '../components/Icon.jsx';
 import { SelectButton } from '../components/SelectButton.jsx';
+import { plural } from '../format.js';
 import { CatalogGate, NotFoundContent } from '../components/StatusViews.jsx';
 import { useCatalog } from '../hooks/useCatalog.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
@@ -21,14 +23,21 @@ export function ServicePage() {
         return (
           <div className="page">
             <p className="breadcrumb">
-              <Link to="/">Volver al catálogo</Link>
+              <Link to="/">
+                <Icon name="arrow-left" />
+                Volver al catálogo
+              </Link>
             </p>
             <header className="page-header">
-              <p className="eyebrow">Servicio SaaS</p>
               <h1>{service.name}</h1>
               <p className="hero__lead">{service.description}</p>
+              <p className="page-meta">
+                <span className="tag">Servicio SaaS</span>
+                <span>{plural(relations.length, 'alternativa', 'alternativas')} en el catálogo</span>
+              </p>
             </header>
             <p className="callout">
+              <Icon name="info" className="callout__icon" />
               Cada alternativa cubre parte de la necesidad descrita; el catálogo no garantiza una equivalencia completa con el servicio
               original.
             </p>

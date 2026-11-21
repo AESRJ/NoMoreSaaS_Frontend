@@ -2,9 +2,17 @@ import { Link } from 'react-router';
 
 export function LoadingState({ label = 'Cargando el catálogo…' }) {
   return (
-    <div className="state state--loading" role="status">
-      <span className="spinner" aria-hidden="true" />
-      <p>{label}</p>
+    <div className="loading" role="status">
+      <p className="loading__label">{label}</p>
+      <div className="skeleton-grid" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="skeleton-card">
+            <span className="skeleton skeleton--title" />
+            <span className="skeleton" />
+            <span className="skeleton skeleton--short" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

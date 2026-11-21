@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { ExternalLink } from '../components/ExternalLink.jsx';
+import { Icon } from '../components/Icon.jsx';
 import { SelectButton } from '../components/SelectButton.jsx';
 import { CatalogGate } from '../components/StatusViews.jsx';
 import { LICENSE_CLASSIFICATION_LABELS, difficultyLabel, formatDate, latestCheckedAt, plural, sourcesFor } from '../format.js';
@@ -120,8 +121,8 @@ export function ComparePage() {
   return (
     <div className="page">
       <header className="page-header">
-        <p className="eyebrow">{`Hasta ${MAX_SELECTION} alternativas`}</p>
         <h1>Comparar alternativas</h1>
+        <p className="hero__lead">{`Hasta ${MAX_SELECTION} alternativas, criterio por criterio.`}</p>
       </header>
       <CatalogGate catalog={catalog}>
         {(index) => {
@@ -160,6 +161,7 @@ export function ComparePage() {
             <>
               {shared.length === 0 ? (
                 <div className="callout callout--warning">
+                  <Icon name="alert" className="callout__icon" />
                   <p>
                     <strong>Estas alternativas cubren necesidades distintas.</strong>{' '}
                     {alternatives
@@ -169,10 +171,14 @@ export function ComparePage() {
                   </p>
                 </div>
               ) : (
-                <p className="callout">{`Todas sustituyen a ${shared.map((id) => index.service(id).name).join(', ')}. Los datos ausentes no implican que una función no exista.`}</p>
+                <p className="callout">
+                  <Icon name="info" className="callout__icon" />
+                  {`Todas sustituyen a ${shared.map((id) => index.service(id).name).join(', ')}. Los datos ausentes no implican que una función no exista.`}
+                </p>
               )}
               <p className="scroll-hint" aria-hidden="true">
-                Desliza horizontalmente para ver todas las columnas →
+                Desliza horizontalmente para ver todas las columnas
+                <Icon name="arrow-right" />
               </p>
               <div className="table-scroll" role="region" aria-label="Tabla de comparación (desplazable horizontalmente)" tabIndex={0}>
                 <table className="compare-table">

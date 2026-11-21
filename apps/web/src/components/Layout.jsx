@@ -49,7 +49,7 @@ export function Layout() {
               <li>
                 <NavLink to="/comparar">
                   Comparar
-                  <span className="nav-count" aria-hidden="true">
+                  <span className={`nav-count${count ? '' : ' nav-count--empty'}`} aria-hidden="true">
                     {count}
                   </span>
                 </NavLink>

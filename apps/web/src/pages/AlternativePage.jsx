@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { ExternalLink } from '../components/ExternalLink.jsx';
+import { Icon } from '../components/Icon.jsx';
 import { SelectButton } from '../components/SelectButton.jsx';
 import { SourceList } from '../components/SourceList.jsx';
 import { CatalogGate, NotFoundContent } from '../components/StatusViews.jsx';
@@ -38,14 +39,19 @@ export function AlternativePage() {
         return (
           <article className="page detail">
             <p className="breadcrumb">
-              <Link to="/">Volver al catálogo</Link>
+              <Link to="/">
+                <Icon name="arrow-left" />
+                Volver al catálogo
+              </Link>
             </p>
             <header className="page-header detail__header">
               <div>
-                <p className="eyebrow">Alternativa autoalojable</p>
                 <h1>{alternative.name}</h1>
                 <p className="hero__lead">{alternative.description}</p>
-                <p className="muted">{`Última revisión de fuentes: ${formatDate(latest)}`}</p>
+                <p className="page-meta">
+                  <span className="tag">Alternativa autoalojable</span>
+                  <span>{`Última revisión de fuentes: ${formatDate(latest)}`}</span>
+                </p>
               </div>
               <div className="detail__actions">
                 <SelectButton alternative={alternative} />
