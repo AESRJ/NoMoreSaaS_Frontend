@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "services": [
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Plataforma alojada para repositorios Git con revisión de código, incidencias, integración continua y registro de paquetes."
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "description": "Almacenamiento de archivos en la nube con sincronización entre dispositivos y uso compartido."
+    },
+    {
+      "id": "google-photos",
+      "name": "Google Fotos",
+      "description": "Copia de seguridad, organización y búsqueda de fotos y vídeos desde el móvil y la web."
+    }
+  ],
+  "alternatives": [
+    {
+      "id": "nextcloud",
+      "name": "Nextcloud",
+      "description": "Plataforma de colaboración de contenidos autoalojable: almacenamiento y sincronización de archivos, edición de documentos, videollamadas y groupware desde web, escritorio y móvil.",
+      "capabilities": [
+        "Almacenamiento y sincronización de archivos con interfaces web, de escritorio y móvil (Nextcloud Files).",
+        "Clientes de sincronización para Windows, macOS, Linux, Android e iOS.",
+        "Chat de texto y videollamadas con compartición de pantalla (Nextcloud Talk).",
+        "Calendario, contactos y correo (groupware).",
+        "Suite ofimática en línea basada en LibreOffice con edición colaborativa.",
+        "Ampliable con aplicaciones de la App Store de Nextcloud."
+      ],
+      "limitations": [
+        "El servidor oficial se documenta para sistemas Linux de 64 bits; Windows no figura como sistema operativo de servidor.",
+        "En sistemas de 32 bits no se admiten fechas anteriores a 1970 ni posteriores a 2038 y algunas apps externas pueden no funcionar.",
+        "Con poca memoria algunas funciones o apps pueden requerir ajustes o tener que desactivarse.",
+        "Con MySQL/MariaDB exige InnoDB, aislamiento READ COMMITTED y binlog desactivado o en formato ROW.",
+        "SQLite solo se recomienda para pruebas e instancias mínimas."
+      ],
+      "license": {
+        "label": "GNU AGPL v3",
+        "url": "https://github.com/nextcloud/server/blob/master/COPYING",
+        "classification": "open-source"
+      },
+      "difficulty": {
+        "level": "advanced",
+        "explanation": "Requiere preparar y mantener PHP (8.3–8.5), un servidor web (Apache o nginx con php-fpm) y una base de datos con parámetros específicos, además de gestionar actualizaciones y copias de seguridad del servidor."
+      },
+      "hostingNotes": "Documentación de requisitos del servidor (manual de administración, versión «latest» consultada como 35, con 36 en preparación): Linux de 64 bits (p. ej. Ubuntu 24.04/26.04 LTS, RHEL 9/10, Debian 13); PHP 8.3, 8.4 u 8.5; Apache 2.4 o nginx con php-fpm; MySQL 8.4/9.7, MariaDB 10.11–12.3, PostgreSQL 14–18 o SQLite 3.24+ (solo pruebas). Memoria: mínimo 128 MB por proceso y recomendado 512 MB por proceso según la documentación; el actualizador integrado requiere al menos 256 MB. No se indica un total de RAM para el servidor completo.",
+      "officialUrl": "https://nextcloud.com/",
+      "documentationUrl": "https://docs.nextcloud.com/server/latest/admin_manual/",
+      "sources": [
+        {
+          "url": "https://nextcloud.com/",
+          "checkedAt": "2026-11-20",
+          "supports": ["name", "description", "capabilities", "officialUrl", "documentationUrl"],
+          "kind": "official",
+          "note": "Sitio oficial: descripción de la plataforma, productos (Files, Talk, groupware, Office) y enlaces a la documentación."
+        },
+        {
+          "url": "https://docs.nextcloud.com/server/latest/admin_manual/installation/system_requirements.html",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities", "limitations", "hostingNotes"],
+          "kind": "official",
+          "note": "Requisitos del sistema, clientes soportados y advertencias sobre 32 bits, memoria y bases de datos."
+        },
+        {
+          "url": "https://github.com/nextcloud/server/blob/master/COPYING",
+          "checkedAt": "2026-11-20",
+          "supports": ["license"],
+          "kind": "official",
+          "note": "Texto de la licencia: GNU Affero General Public License, versión 3."
+        },
+        {
+          "url": "https://docs.nextcloud.com/server/latest/admin_manual/installation/system_requirements.html",
+          "checkedAt": "2026-11-20",
+          "supports": ["difficulty"],
+          "kind": "editorial",
+          "note": "Evaluación editorial de NoMoreSaaS a partir de la cantidad de componentes que la documentación exige configurar (PHP, servidor web, base de datos); no es una afirmación de Nextcloud."
+        }
+      ]
+    },
+    {
+      "id": "immich",
+      "name": "Immich",
+      "description": "Solución autoalojable de alto rendimiento para gestionar fotos y vídeos, con aplicaciones móviles y web.",
+      "capabilities": [
+        "Subida y visualización de fotos y vídeos; copia automática y en segundo plano desde la app móvil.",
+        "Copia selectiva por álbum en el móvil y prevención de duplicados.",
+        "Varios usuarios, álbumes compartidos, compartición con pareja y enlaces públicos.",
+        "Búsqueda por metadatos, objetos, caras y CLIP; reconocimiento y agrupación facial.",
+        "Vista de metadatos EXIF y mapa global; recuerdos, archivo y favoritos.",
+        "Soporte de formatos RAW y de LivePhoto/MotionPhoto.",
+        "Claves de API y OAuth en la interfaz web."
+      ],
+      "limitations": [
+        "La base de datos solo guarda metadatos: la documentación indica que hay que configurar copias de seguridad manuales de las fotos y vídeos.",
+        "El proyecto recomienda seguir una estrategia de copias 3-2-1.",
+        "Se desaconsejan fuertemente los sistemas operativos que no son Linux; en Windows solo mediante Docker Desktop o WSL 2.",
+        "La base de datos Postgres no debe estar en un recurso compartido de red y no funciona sobre NTFS o exFAT/FAT32.",
+        "Con 4 GB de RAM solo puede ejecutarse desactivando el aprendizaje automático."
+      ],
+      "license": {
+        "label": "GNU AGPL v3",
+        "url": "https://github.com/immich-app/immich/blob/main/LICENSE",
+        "classification": "open-source"
+      },
+      "difficulty": {
+        "level": "intermediate",
+        "explanation": "La instalación documentada usa Docker Compose, lo que simplifica el despliegue, pero exige conocer contenedores, disponer de varios GB de RAM y planificar por cuenta propia las copias de seguridad de la biblioteca."
+      },
+      "hostingNotes": "Requisitos documentados: sistema Linux o *nix de 64 bits (amd64 o arm64); Docker con el plugin Docker Compose; RAM mínima 6 GB y recomendada 8 GB; CPU mínima 2 núcleos y recomendada 4; sistema de archivos compatible con Unix. Las miniaturas y vídeos transcodificados pueden aumentar el tamaño de la biblioteca entre un 10 y un 20 % de media según la documentación. La base de datos debería estar en un SSD local.",
+      "officialUrl": "https://immich.app/",
+      "documentationUrl": "https://docs.immich.app/",
+      "sources": [
+        {
+          "url": "https://github.com/immich-app/immich",
+          "checkedAt": "2026-11-20",
+          "supports": ["name", "description", "capabilities", "limitations"],
+          "kind": "official",
+          "note": "Repositorio oficial: descripción, tabla de funciones y advertencia de copias 3-2-1."
+        },
+        {
+          "url": "https://docs.immich.app/install/requirements",
+          "checkedAt": "2026-11-20",
+          "supports": ["limitations", "hostingNotes", "license"],
+          "kind": "official",
+          "note": "Requisitos de hardware y software, advertencias sobre Windows/NTFS y mención de la licencia GNU AGPL v3."
+        },
+        {
+          "url": "https://docs.immich.app/overview/quick-start",
+          "checkedAt": "2026-11-20",
+          "supports": ["limitations", "documentationUrl"],
+          "kind": "official",
+          "note": "Inicio rápido: advertencia de que las imágenes y vídeos requieren copias manuales."
+        },
+        {
+          "url": "https://github.com/immich-app/immich/blob/main/LICENSE",
+          "checkedAt": "2026-11-20",
+          "supports": ["license"],
+          "kind": "official",
+          "note": "Texto de la licencia: GNU Affero General Public License, versión 3."
+        },
+        {
+          "url": "https://immich.app/",
+          "checkedAt": "2026-11-20",
+          "supports": ["officialUrl"],
+          "kind": "official",
+          "note": "Sitio oficial con descargas para Android, iOS y servidor; no incluye una descripción textual."
+        },
+        {
+          "url": "https://docs.immich.app/install/requirements",
+          "checkedAt": "2026-11-20",
+          "supports": ["difficulty"],
+          "kind": "editorial",
+          "note": "Evaluación editorial de NoMoreSaaS basada en el uso de Docker Compose y en los requisitos y advertencias de copias documentados; no es una afirmación de Immich."
+        }
+      ]
+    },
+    {
+      "id": "gitea",
+      "name": "Gitea",
+      "description": "Servicio autoalojable todo en uno para desarrollo de software: alojamiento Git, revisión de código, colaboración, registro de paquetes y CI/CD.",
+      "capabilities": [
+        "Alojamiento de repositorios Git con ramas, etiquetas, hooks y Git LFS.",
+        "Revisión de código con flujo de Pull Request y AGit.",
+        "Incidencias con etiquetas, hitos, asignaciones, dependencias, seguimiento de tiempo y tableros kanban.",
+        "Gitea Actions: CI/CD con flujos YAML descritos como compatibles con GitHub Actions.",
+        "Registro de paquetes de más de 20 tipos (p. ej. Container, npm, Maven, PyPI, NuGet).",
+        "Wiki, webhooks, API, integración LDAP/AD y autenticación de dos factores."
+      ],
+      "limitations": [
+        "La tabla comparativa oficial marca como no soportadas, entre otras, incidencias confidenciales, creación de incidencias por correo, subgrupos y resolución de conflictos de fusión.",
+        "Proyectos y búsqueda global de incidencias figuran con soporte parcial en la comparativa oficial.",
+        "Funciones como SAML SSO, registros de auditoría y soporte con SLA se ofrecen en la edición Enterprise, no en la edición open source.",
+        "La documentación advierte que convertir de un tipo de base de datos a otro no está bien probado y que SQLite no escala.",
+        "La compatibilidad con GitHub Actions se describe como cercana, no idéntica."
+      ],
+      "license": {
+        "label": "MIT",
+        "url": "https://github.com/go-gitea/gitea/blob/main/LICENSE",
+        "classification": "open-source"
+      },
+      "difficulty": {
+        "level": "intermediate",
+        "explanation": "Se distribuye como binario o contenedor y puede usar SQLite integrado, pero un uso real requiere configurar una cuenta de sistema dedicada, Git, una base de datos adecuada, copias de seguridad y acceso por HTTPS/SSH."
+      },
+      "hostingNotes": "Requisitos documentados: Git 2.0 o superior (Git LFS con Git ≥ 2.1.2). La documentación indica que «2 núcleos de CPU y 1 GB de RAM suelen ser suficientes para equipos/proyectos pequeños» y que una Raspberry Pi 3 basta para cargas pequeñas; no da cifras para despliegues mayores. Bases de datos: PostgreSQL ≥ 12, MySQL ≥ 8.0, MariaDB ≥ 10.4, SQLite integrado y MSSQL ≥ 2012 SP4. Recomienda ejecutarlo con una cuenta de sistema no root en sistemas UNIX. Versión de documentación consultada: 28.4.0.",
+      "officialUrl": "https://about.gitea.com/",
+      "documentationUrl": "https://docs.gitea.com/",
+      "sources": [
+        {
+          "url": "https://docs.gitea.com/",
+          "checkedAt": "2026-11-20",
+          "supports": ["name", "description", "capabilities", "hostingNotes", "documentationUrl"],
+          "kind": "official",
+          "note": "Página «What is Gitea?»: descripción, funciones y requisitos del sistema."
+        },
+        {
+          "url": "https://about.gitea.com/",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities", "limitations", "officialUrl"],
+          "kind": "official",
+          "note": "Sitio oficial: funciones y diferenciación con la edición Enterprise."
+        },
+        {
+          "url": "https://docs.gitea.com/installation/comparison",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities", "limitations"],
+          "kind": "official",
+          "note": "Tabla comparativa oficial de funciones soportadas, parciales y no soportadas."
+        },
+        {
+          "url": "https://docs.gitea.com/installation/database-prep",
+          "checkedAt": "2026-11-20",
+          "supports": ["limitations", "hostingNotes"],
+          "kind": "official",
+          "note": "Bases de datos soportadas y advertencias sobre conversión de bases de datos y SQLite."
+        },
+        {
+          "url": "https://github.com/go-gitea/gitea/blob/main/LICENSE",
+          "checkedAt": "2026-11-20",
+          "supports": ["license"],
+          "kind": "official",
+          "note": "Texto de licencia MIT (Copyright The Gitea Authors y The Gogs Authors); el README del repositorio la identifica como MIT."
+        },
+        {
+          "url": "https://docs.gitea.com/installation/install-from-binary",
+          "checkedAt": "2026-11-20",
+          "supports": ["difficulty"],
+          "kind": "editorial",
+          "note": "Evaluación editorial de NoMoreSaaS a partir de los pasos de instalación documentados; no es una afirmación de Gitea."
+        }
+      ]
+    },
+    {
+      "id": "forgejo",
+      "name": "Forgejo",
+      "description": "Forja de software autoalojable y ligera centrada en seguridad, escalado, federación y privacidad: alojamiento Git con incidencias, pull requests, wikis y tableros.",
+      "capabilities": [
+        "Alojamiento de repositorios Git con incidencias, pull requests, wikis y tableros kanban.",
+        "Forgejo Actions para integración continua.",
+        "Registro de paquetes para Container, npm, PyPI, Maven, Go y otros gestores.",
+        "Funciona con SQLite sin preparación adicional o con MySQL/MariaDB y PostgreSQL."
+      ],
+      "limitations": [
+        "La federación entre forjas mediante ActivityPub está en desarrollo (WIP), no disponible como función completa.",
+        "Es un fork independiente («hard fork») de Gitea desde principios de 2024; los códigos han divergido y no se garantiza compatibilidad entre ambos.",
+        "Al migrar desde Gitea hay que conservar el nombre del binario gitea porque los hooks de Git lo referencian."
+      ],
+      "license": {
+        "label": "GPL-3.0-or-later (desde v9.0; versiones anteriores MIT)",
+        "url": "https://codeberg.org/forgejo/forgejo/src/branch/forgejo/LICENSE",
+        "classification": "open-source"
+      },
+      "difficulty": {
+        "level": "intermediate",
+        "explanation": "Ofrece binario y contenedor con SQLite por defecto, pero requiere instalar Git y git-lfs, gestionar el servicio, copias de seguridad y acceso por HTTPS/SSH; elegir otra base de datos añade preparación."
+      },
+      "hostingNotes": "Requisitos documentados: tener instalados git y git-lfs (sin versión mínima indicada). Bases de datos soportadas: MariaDB ≥ 10.6 (InnoDB), MySQL ≥ 8.4 (InnoDB), PostgreSQL ≥ 14 y SQLite; la documentación indica que SQLite es suficiente para al menos 10 usuarios. No se publican cifras de RAM ni CPU en las páginas consultadas: requisitos de hardware no verificados. Versión de documentación consultada: v17.0.2.",
+      "officialUrl": "https://forgejo.org/",
+      "documentationUrl": "https://forgejo.org/docs/latest/",
+      "sources": [
+        {
+          "url": "https://forgejo.org/",
+          "checkedAt": "2026-11-20",
+          "supports": ["name", "description", "officialUrl"],
+          "kind": "official",
+          "note": "Sitio oficial: «a self-hosted lightweight software forge»."
+        },
+        {
+          "url": "https://codeberg.org/forgejo/forgejo",
+          "checkedAt": "2026-11-20",
+          "supports": ["description", "capabilities", "limitations", "license"],
+          "kind": "official",
+          "note": "README oficial: funciones, federación WIP y licencia GPL v3 o posterior desde v9.0 (MIT antes). El archivo LICENSE enlazado no pudo leerse de forma automatizada porque Codeberg devolvió una página antiscraping; la licencia se respalda con el README."
+        },
+        {
+          "url": "https://forgejo.org/docs/latest/",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities", "documentationUrl"],
+          "kind": "official",
+          "note": "Documentación v17.0: pull requests, incidencias y Forgejo Actions."
+        },
+        {
+          "url": "https://forgejo.org/docs/latest/user/packages/",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities"],
+          "kind": "official",
+          "note": "Registros de paquetes soportados."
+        },
+        {
+          "url": "https://forgejo.org/docs/latest/admin/installation/binary/",
+          "checkedAt": "2026-11-20",
+          "supports": ["capabilities", "hostingNotes"],
+          "kind": "official",
+          "note": "Instalación con binario: git y git-lfs requeridos; SQLite suficiente para al menos 10 usuarios. No indica RAM ni CPU."
+        },
+        {
+          "url": "https://forgejo.org/docs/latest/admin/installation/database-preparation/",
+          "checkedAt": "2026-11-20",
+          "supports": ["hostingNotes"],
+          "kind": "official",
+          "note": "Bases de datos soportadas y versiones mínimas."
+        },
+        {
+          "url": "https://forgejo.org/compare-to-gitea/",
+          "checkedAt": "2026-11-20",
+          "supports": ["limitations"],
+          "kind": "official",
+          "note": "Relación con Gitea: soft fork desde 2022, hard fork desde principios de 2024; federación en desarrollo; nombre de binario al migrar."
+        },
+        {
+          "url": "https://forgejo.org/docs/latest/admin/installation/binary/",
+          "checkedAt": "2026-11-20",
+          "supports": ["difficulty"],
+          "kind": "editorial",
+          "note": "Evaluación editorial de NoMoreSaaS a partir de los pasos de instalación documentados; no es una afirmación de Forgejo."
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "serviceId": "github",
+      "alternativeId": "gitea",
+      "coverage": "Cubre el alojamiento de repositorios Git, la revisión de código mediante pull requests, las incidencias, CI/CD con Gitea Actions y el registro de paquetes. No reproduce la red social ni el ecosistema público de GitHub, y la compatibilidad con GitHub Actions es cercana, no idéntica."
+    },
+    {
+      "serviceId": "github",
+      "alternativeId": "forgejo",
+      "coverage": "Cubre el alojamiento de repositorios Git, pull requests, incidencias, wikis, Forgejo Actions y paquetes. No reproduce la comunidad pública de GitHub; la federación entre forjas sigue en desarrollo."
+    },
+    {
+      "serviceId": "google-drive",
+      "alternativeId": "nextcloud",
+      "coverage": "Cubre el almacenamiento, la sincronización entre dispositivos y la compartición de archivos, y añade groupware y ofimática en línea. La disponibilidad, el espacio y las copias de seguridad dependen del servidor propio; no es una equivalencia completa con Google Drive ni con Google Workspace."
+    },
+    {
+      "serviceId": "google-photos",
+      "alternativeId": "immich",
+      "coverage": "Cubre la copia automática desde el móvil, la organización en álbumes, la compartición y la búsqueda por caras, objetos y metadatos. Las copias de seguridad de la biblioteca son responsabilidad de quien aloja el servicio; no se garantiza paridad funcional con Google Fotos."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "nomoresaas",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --parallel --stream run dev",
+    "lint": "eslint .",
+    "test": "pnpm --recursive run test",
+    "build": "pnpm --filter @nomoresaas/web run build",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
+    "eslint": "10.15.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.14.0"
+  }
+}
