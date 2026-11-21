@@ -1,6 +1,6 @@
 {
   "feature_id": "MVP-CATALOGO",
-  "status": "ready",
+  "status": "closed",
   "planner": "codex",
   "executor": "claude-code",
   "spec_dir": ".project/specs/002-catalogo-comparacion",
@@ -50,5 +50,6 @@
   "blockers": [],
   "implementation_report": ".project/progress/impl_MVP-CATALOGO.md",
   "review_report": ".project/progress/review_MVP-CATALOGO.md",
-  "execution_repository": "https://github.com/AESRJ/NoMoreSaaS_Frontend.git"
+  "execution_repository": "https://github.com/AESRJ/NoMoreSaaS_Frontend.git",
+  "review_result": "accepted by Codex; 80 API + 56 web + 22 e2e, lint and build passed independently"
 }

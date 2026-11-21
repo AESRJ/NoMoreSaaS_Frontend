@@ -2,13 +2,15 @@ import argparse, json, re, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser()
-p.add_argument('--implementation-ready', default='.project/handoffs/002-catalogo-comparacion.json')
+p.add_argument('--implementation-ready', default=None)
 a = p.parse_args()
 try:
-    path = (ROOT / a.implementation_ready).resolve()
+    path = (ROOT / (a.implementation_ready or '.project/handoffs/002-catalogo-comparacion.json')).resolve()
     assert path.is_relative_to(ROOT), 'Ruta fuera del checkout'
     h = json.loads(path.read_text(encoding='utf-8'))
-    assert h['status'] == 'ready' and not h['blockers'], 'Entrega no autorizada'
+    assert h['status'] in {'ready', 'in_review', 'closed'}, 'Estado de entrega no operativo'
+    if a.implementation_ready:
+        assert h['status'] == 'ready' and not h['blockers'], 'Entrega no autorizada para nueva implementacion'
     assert h['planner'] == 'codex' and h['executor'] == 'claude-code'
     assert h['execution_repository'] == 'https://github.com/AESRJ/NoMoreSaaS_Frontend.git'
     spec = (ROOT / h['spec_dir']).resolve()

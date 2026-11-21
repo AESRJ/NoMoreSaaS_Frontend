@@ -10,7 +10,7 @@ Node LTS, pnpm y Git; abrir una terminal nueva después de instalar para recoger
 
 ```powershell
 .\init.cmd
-.\.venv\Scripts\python.exe tools/check_handoff.py --implementation-ready .project/handoffs/002-catalogo-comparacion.json
+python tools/check_handoff.py --implementation-ready .project/handoffs/002-catalogo-comparacion.json
 ```
 
 Leer `CLAUDE.md`, la entrega y todos los artefactos de esta especificación antes de ejecutar `/speckit-implement`. No iniciar si la puerta falla.
