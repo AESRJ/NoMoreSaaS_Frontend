@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+.local/
+.mcp.json
+.codex/config.toml
+.claude/settings.local.json
+__pycache__/
+*.pyc
