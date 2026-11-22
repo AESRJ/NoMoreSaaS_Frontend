@@ -6,7 +6,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createAuth } from '../src/auth.js';
-import { validateCatalog } from '../src/catalog.js';
+import { DEFAULT_CATALOG_PATH, loadCatalog, validateCatalog } from '../src/catalog.js';
 import { migrate, openDatabase } from '../src/db.js';
 import { createProjects } from '../src/projects.js';
 import { PROFILE_FIELDS, parseProfile } from '../src/workflow.js';
@@ -57,14 +57,14 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function build({ path = join(dir, 'wf.sqlite'), fresh = true } = {}) {
+function build({ path = join(dir, 'wf.sqlite'), fresh = true, catalogData = catalog } = {}) {
   const db = openDatabase(path);
   if (fresh) migrate(db);
   const now = () => clock;
   const auth = createAuth({ db, sessionSecret: SECRET, appOrigin: ORIGIN, cookieSecure: false, now, hasher: fakeHasher });
-  const projects = createProjects({ db, catalog, auth, now });
+  const projects = createProjects({ db, catalog: catalogData, auth, now });
   opened.push({ auth, db });
-  return { app: createApp({ catalog, logger: { error: vi.fn() }, auth, projects }), db, auth };
+  return { app: createApp({ catalog: catalogData, logger: { error: vi.fn() }, auth, projects }), db, auth };
 }
 
 function send(agent, method, path, body, token, { origin = ORIGIN } = {}) {
@@ -132,7 +132,8 @@ describe('PUT /api/projects/:id/profile', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       profile: { projectId: id, ...PROFILE, revision: 1 },
-      evaluation: null,
+      // El fixture no tiene reglas: evaluación pendiente con requisitos desconocidos (T003).
+      evaluation: expect.objectContaining({ status: 'pending', rulesVersion: expect.any(String) }),
       plan: null,
       progress: EMPTY_PROGRESS,
     });
@@ -284,6 +285,22 @@ describe('PUT /api/projects/:id/profile', () => {
     await putProfile(ana, id, PROFILE);
     expect((await send(ana.agent, 'delete', `/api/projects/${id}`, {}, ana.token)).status).toBe(204);
     expect(db.prepare('SELECT count(*) AS n FROM project_profiles').get().n).toBe(0);
+  });
+
+  it('seed real: PUT/GET devuelven la misma evaluación y cambiar el equipo la recalcula (insuficiente)', async () => {
+    const seed = await loadCatalog(DEFAULT_CATALOG_PATH, { requireSeedCoverage: true });
+    const { app } = build({ catalogData: seed });
+    const ana = await signUp(app, 'ana@example.com');
+    const created = await send(ana.agent, 'post', '/api/projects', { name: 'Equipo', alternativeIds: ['nextcloud', 'wireguard'] }, ana.token);
+    const id = created.body.project.id;
+    const local = { ...PROFILE, access: 'local', cpuFeaturesKnown: true };
+    const put = await putProfile(ana, id, local);
+    expect(put.body.evaluation).toMatchObject({ status: 'viable', rulesVersion: '2026-11-22.1' });
+    expect(put.body.evaluation.totals.ramGiB).toEqual({ base: 2.25, required: 2.81, available: 7.5 });
+    expect((await getWorkflow(ana, id)).body.evaluation).toEqual(put.body.evaluation);
+    const small = await putProfile(ana, id, { ...local, ramGiB: 2, storageGiB: 10 });
+    expect(small.body.evaluation.status).toBe('insufficient');
+    expect(small.body.evaluation.warnings.slice(0, 2).map((w) => w.code)).toEqual(['ram-insufficient', 'disk-insufficient']);
   });
 
   it('PROFILE_FIELDS coincide con los campos editables del modelo', () => {

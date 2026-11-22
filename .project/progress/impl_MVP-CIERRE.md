@@ -30,3 +30,20 @@ Verificación (real):
 - Corrección en `apps/api/src/workflow.js`: `fields = Object.create(null)`; `__proto__`/`constructor`/`prototype` se rechazan como «Campo no permitido.» igual que cualquier extra.
 - Prueba nueva en `apps/api/tests/workflow.test.js`: para las tres claves, `JSON.parse` de un cuerpo crudo (clave propia comprobada) → `parseProfile` lanza VALIDATION_ERROR con `fields` = esa clave; vía HTTP con cuerpo JSON crudo → 400 con ese campo; sin contaminación de `Object.prototype` y 0 perfiles escritos.
 - `pnpm --filter @nomoresaas/api exec vitest run tests/workflow.test.js tests/db.test.js` → 2 archivos, 39/39. `pnpm exec eslint apps/api/src/workflow.js apps/api/tests/workflow.test.js` → sin errores. No verifiqué la prueba contra el código anterior (no revertí el cambio).
+
+## T003 — Reglas versionadas y evaluación (2026-11-22, Claude)
+- `apps/api/data/requirements.json` (`rulesVersion` 2026-11-22.1): presupuestos editoriales exactos de data-model (Nextcloud 2/2/4, Immich 8/4/10, Synapse 2/2/4, WireGuard 0,25/1/0,25, Outline 2/2/4 GiB/núcleos/GiB), margen RAM 25 %, datos ×1,25, paso de carga 10 usuarios; por alternativa resumen oficial con fuentes oficiales fechadas (separadas de la fuente editorial) y reglas de plataforma/almacenamiento/CPU/red/dominio/notas. Fuentes: catálogo T001 y research.md 004 (Immich x86-64-v2 tomado de research.md, no revisitado).
+- `apps/api/src/evaluation.js`: `validateRules`/`loadRules` (al arrancar, congeladas) y `evaluate` determinista → `{status, rulesVersion, checkedAt, editorialSource, items, totals, warnings}`. RAM = Σbase × techo(users/10 si >10) × 1,25; CPU = Σ núcleos × factor (sin garantía de concurrencia); disco = Σbase + datos × 1,25 (una vez); ecuaciones textuales con números y unidades. Avisos con severidad blocking/pending/info: insuficiencia RAM/CPU/disco primero; SO/arquitectura/almacenamiento desconocidos, retirada, sin reglas, dominio/HTTPS, UDP WireGuard, CPU x86-64-v2, proveedor auth Outline → pendiente; Outline en Windows → bloqueo. status = insufficient si hay bloqueo, pending si hay pendiente, viable solo sin ambos; siempre aviso «estimación orientativa, no garantiza». Sin persistencia: se recalcula en cada respuesta.
+- Integración: `workflow.js` incluye `evaluation` en GET workflow y PUT profile (null sin perfil; plan null y avance vacío hasta T004); `projects.js` inyecta nombres de catálogo y reglas (`rules` opcional, por defecto las publicadas).
+- Pruebas: nueva `apps/api/tests/evaluation.test.js` (11 casos con reglas y seed reales: reproducibilidad y ecuación exacta, viable con descargo, insuficiente con orden de motivos, desconocidos, retirada sin inventar recursos, carga 25 usuarios ×3, plataforma Windows, internet/dominio/UDP, cobertura de reglas, validación de reglas). `workflow.test.js`: expectativa de evaluación con fixture (pendiente) y caso HTTP con seed real (viable → insuficiente al reducir equipo; GET = PUT).
+
+Verificación (real):
+- `pnpm --filter @nomoresaas/api exec vitest run tests/evaluation.test.js tests/workflow.test.js` → 2 archivos, 23/23.
+- `pnpm --filter @nomoresaas/api exec vitest run tests/projects.test.js` → 44/44 (createProjects/startServer con reglas por defecto).
+- `pnpm exec eslint apps/api/src apps/api/tests` → sin errores.
+- No ejecutado: suite completa, web y e2e (fuera de foco). DB de preview sin tocar.
+
+### T003 — corrección tras revisión Codex (Immich en macOS)
+- `apps/api/data/requirements.json`: Immich `os.macos` → pending `platform-discouraged` (Docker Desktop posible pero desaconsejado por la experiencia de Docker; no afirma que no funcione), fuente oficial `https://docs.immich.app/install/requirements/`. `rulesVersion` sin cambiar.
+- `apps/api/tests/evaluation.test.js`: caso macOS + amd64 + CPU comprobada + recursos amplios → status `pending`, aviso con severidad, alternativa y fuente, sin «no funciona».
+- `pnpm --filter @nomoresaas/api exec vitest run tests/evaluation.test.js tests/workflow.test.js` → 2 archivos, 24/24. `pnpm exec eslint apps/api/src/evaluation.js apps/api/tests/evaluation.test.js` → sin errores. Plan sigue null hasta T004; índice Git no tocado.

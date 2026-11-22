@@ -36,11 +36,12 @@
   ],
   "blockers": [],
   "external_dependencies": [
-    "Higgsfield image: project MCP requires client approval then OAuth; continue independent work, do not claim asset complete"
+    "Higgsfield MCP: usuario autenticó; claude mcp get confirmó Connected el2026-11-22; generar imagen real enT006"
   ],
   "implementation_report": ".project/progress/impl_MVP-CIERRE.md",
   "review_report": ".project/progress/review_MVP-CIERRE.md",
   "execution_repository": "https://github.com/AESRJ/NoMoreSaaS_Frontend.git",
   "execution_mode": "one task per Claude invocation; Codex review and commit; no push",
-  "commit_interval_minutes": 20
+  "commit_interval_minutes": null,
+  "commit_cadence": "one reviewed task per commit; prioritize completion without artificial waits per latest user request"
 }

@@ -1,0 +1,116 @@
+{
+  "rulesVersion": "2026-11-22.1",
+  "checkedAt": "2026-11-22",
+  "ramMargin": 0.25,
+  "dataMargin": 1.25,
+  "usersPerLoadStep": 10,
+  "editorialSource": {
+    "kind": "editorial",
+    "note": "Presupuesto editorial del prototipo NoMoreSaaS (data-model 004) para estimar la pila completa de cada servicio. No es un mínimo oficial, un benchmark ni una garantía."
+  },
+  "alternatives": {
+    "nextcloud": {
+      "budget": { "ramGiB": 2, "cpuCores": 2, "diskGiB": 4 },
+      "official": {
+        "summary": "La documentación indica 128 MB mínimo y 512 MB recomendado por proceso PHP (no un total del servidor); servidor Linux de 64 bits.",
+        "sources": [
+          {
+            "url": "https://docs.nextcloud.com/server/latest/admin_manual/installation/system_requirements.html",
+            "checkedAt": "2026-11-20",
+            "kind": "official",
+            "note": "Requisitos del sistema: memoria por proceso, SO y bases de datos."
+          }
+        ]
+      },
+      "os": {
+        "windows": { "severity": "pending", "code": "platform-undocumented", "text": "Nextcloud documenta el servidor para Linux de 64 bits; Windows no figura como sistema de servidor. Haría falta una VM o contenedor Linux." },
+        "macos": { "severity": "pending", "code": "platform-undocumented", "text": "Nextcloud documenta el servidor para Linux de 64 bits; macOS no figura como sistema de servidor. Haría falta una VM o contenedor Linux." }
+      },
+      "webService": true
+    },
+    "immich": {
+      "budget": { "ramGiB": 8, "cpuCores": 4, "diskGiB": 10 },
+      "official": {
+        "summary": "Mínimo documentado 6 GB de RAM y 2 núcleos; recomendado 8 GB y 4 núcleos. amd64 o arm64. Con 4 GB solo sin aprendizaje automático.",
+        "sources": [
+          {
+            "url": "https://docs.immich.app/install/requirements/",
+            "checkedAt": "2026-11-22",
+            "kind": "official",
+            "note": "Requisitos de hardware y software, según research.md de la entrega 004."
+          }
+        ]
+      },
+      "os": {
+        "windows": { "severity": "pending", "code": "platform-discouraged", "text": "Immich desaconseja fuertemente sistemas no Linux; en Windows solo mediante Docker Desktop o WSL 2." },
+        "macos": { "severity": "pending", "code": "platform-discouraged", "text": "Immich desaconseja fuertemente sistemas no Linux. En macOS puede ejecutarse con Docker Desktop, pero la documentación lo desaconseja por la experiencia de Docker en ese sistema; no está comprobado en este perfil." }
+      },
+      "storage": {
+        "network": { "severity": "pending", "code": "storage-network-db", "text": "La base de datos PostgreSQL de Immich no debe estar en un recurso de red; debe ir en disco local (idealmente SSD)." },
+        "hdd": { "severity": "info", "code": "storage-hdd-db", "text": "La documentación recomienda la base de datos de Immich en un SSD local." }
+      },
+      "cpuFeatures": { "architecture": "amd64", "severity": "pending", "code": "cpu-features-unknown", "text": "El aprendizaje automático de Immich en amd64 requiere una CPU x86-64-v2; no está comprobado en este perfil." },
+      "webService": true
+    },
+    "matrix-synapse": {
+      "budget": { "ramGiB": 2, "cpuCores": 2, "diskGiB": 4 },
+      "official": {
+        "summary": "No hay mínimo universal publicado; la guía cita al menos 1 GB de RAM libre para unirse a salas públicas grandes. PostgreSQL para producción, HTTPS y server_name definitivo.",
+        "sources": [
+          {
+            "url": "https://element-hq.github.io/synapse/latest/setup/installation.html",
+            "checkedAt": "2026-11-22",
+            "kind": "official",
+            "note": "Guía de instalación de Synapse: plataformas, PostgreSQL, HTTPS, TURN y referencia de 1 GB."
+          }
+        ]
+      },
+      "os": {
+        "windows": { "severity": "pending", "code": "platform-unsupported-native", "text": "Synapse no se admite oficialmente de forma nativa en Windows; se recomienda WSL." }
+      },
+      "notes": [
+        { "severity": "info", "code": "server-name-permanent", "text": "El server_name de Synapse no puede cambiarse después de instalar; elígelo antes de empezar." }
+      ],
+      "webService": true
+    },
+    "wireguard": {
+      "budget": { "ramGiB": 0.25, "cpuCores": 1, "diskGiB": 0.25 },
+      "official": {
+        "summary": "Las fuentes oficiales consultadas no publican requisitos mínimos de RAM ni CPU. Instalación nativa por sistema operativo.",
+        "sources": [
+          {
+            "url": "https://www.wireguard.com/install/",
+            "checkedAt": "2026-11-22",
+            "kind": "official",
+            "note": "Instalación nativa por plataforma; sin requisitos de hardware publicados."
+          }
+        ]
+      },
+      "internet": { "severity": "pending", "code": "network-udp-unverified", "text": "El acceso remoto con WireGuard necesita al menos un par con un puerto UDP alcanzable; NAT/CGNAT no está comprobado y WireGuard no lo atraviesa automáticamente." },
+      "webService": false
+    },
+    "outline": {
+      "budget": { "ramGiB": 2, "cpuCores": 2, "diskGiB": 4 },
+      "official": {
+        "summary": "La documentación indica 512 MB mínimo y 1 GB o más recomendado para la aplicación según usuarios, sin incluir PostgreSQL 14+ ni Redis 4+. Sistema Unix; no funciona en Windows Server.",
+        "sources": [
+          {
+            "url": "https://docs.getoutline.com/s/hosting/doc/requirements-ULdYnwi4wG",
+            "checkedAt": "2026-11-22",
+            "kind": "official",
+            "note": "Requisitos de alojamiento de Outline."
+          }
+        ]
+      },
+      "os": {
+        "windows": { "severity": "blocking", "code": "platform-unsupported", "text": "La documentación de Outline indica que no funciona en servidores Microsoft Windows." }
+      },
+      "requiresDomain": { "severity": "pending", "code": "domain-required", "text": "Outline requiere un dominio o subdominio dedicado." },
+      "notes": [
+        { "severity": "pending", "code": "auth-provider-required", "text": "Outline requiere un proveedor de autenticación compatible; este perfil no lo comprueba." },
+        { "severity": "info", "code": "license-source-available", "text": "Outline usa Business Source License 1.1 (no open source) y prohíbe ofrecerlo como servicio documental comercial a terceros." }
+      ],
+      "webService": true
+    }
+  }
+}

@@ -1,12 +1,14 @@
 import { ApiError } from './errors.js';
+import { evaluate } from './evaluation.js';
 
 // Flujo privado por proyecto (entrega 004): perfil de equipo y documento
 // workflow. Se monta dentro del router de /api/projects para reutilizar
 // sesión, CSRF/Origin, parser limitado y mapeo de errores. El propietario sale
 // SIEMPRE de la sesión: toda consulta une projects.id con owner_id, y un
 // proyecto ajeno responde el mismo 404 que uno inexistente.
-// Evaluación y plan se calculan en tareas posteriores; aquí son null y el
-// avance va vacío, sin cambiar la forma final del documento.
+// La evaluación (T003) se recalcula en cada respuesta desde perfil, selección
+// y reglas versionadas; null sin perfil. Plan y avance llegan en T004: aquí
+// plan es null y el avance va vacío, sin cambiar la forma final del documento.
 
 export const PROFILE_FIELDS = Object.freeze([
   'cpuCores',
@@ -138,9 +140,11 @@ const sameContent = (a, b) => PROFILE_FIELDS.every((key) => a[key] === b[key]);
  *   timestamp: () => string,
  * }} deps
  */
-export function mountWorkflow(router, { db, read, write, parseProjectId, notFound, transaction, timestamp }) {
+export function mountWorkflow(router, { db, read, write, parseProjectId, notFound, transaction, timestamp, catalogNames, rules }) {
+  if (!catalogNames || !rules) throw new Error('mountWorkflow requiere nombres del catálogo y reglas de evaluación');
   const sql = {
     owned: db.prepare('SELECT 1 AS ok FROM projects WHERE id = ? AND owner_id = ?'),
+    selection: db.prepare('SELECT alternative_id FROM project_selections WHERE project_id = ? ORDER BY position'),
     profile: db.prepare(
       `SELECT f.* FROM project_profiles f JOIN projects p ON p.id = f.project_id
        WHERE f.project_id = ? AND p.owner_id = ?`,
@@ -158,11 +162,14 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
     ),
   };
 
+  /** Llamar solo tras comprobar la propiedad del proyecto. */
   function workflowDocument(projectId, ownerId) {
     const row = sql.profile.get(projectId, ownerId);
+    const profile = row ? toProfileDto(row) : null;
+    const alternativeIds = sql.selection.all(projectId).map((s) => s.alternative_id);
     return {
-      profile: row ? toProfileDto(row) : null,
-      evaluation: null,
+      profile,
+      evaluation: evaluate({ profile, alternativeIds, catalogNames, rules }),
       plan: null,
       progress: { completedStepIds: [], stale: false, updatedAt: null },
     };
