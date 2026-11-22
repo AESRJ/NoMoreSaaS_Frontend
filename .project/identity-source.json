@@ -1,7 +1,7 @@
 {
   "master_repository": "https://github.com/AESRJ/NoMoreSas",
-  "source_directory": "specs/004-flujo-final",
+  "source_directory": "specs/005-ajustes-ui",
   "imported_at": "2026-11-22",
   "authority": "Execution checkboxes and evidence only in this checkout .project",
-  "master_commit": "49b1d99f1acab62a44f0927da796d411e7703fbc"
+  "master_commit": "ef1e823267bfabd10948d51f641f44a426a8e09a"
 }

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "requested_at": "2026-11-22",
+  "execution_repository": "C:\\Users\\Roel\\Documents\\NoMoreSaaS_Frontend",
+  "branch": "feat/revision-y-railway",
+  "role_contract": "Codex plans/reviews/docs/operations; Claude product code only",
+  "active": "005-ajustes-ui",
+  "order": [
+    "005-ajustes-ui",
+    "006-acceso-google",
+    "007-equipo-y-plan-seguro",
+    "008-preparacion-railway"
+  ],
+  "commit_interval_minutes": 20,
+  "minimum_minutes_between_commits": 20,
+  "earliest_retry_local": "2026-11-22T14:21:00-08:00",
+  "implementation_status": "waiting_claude_quota",
+  "external_dependencies": [
+    "GoogleOAuth client setup not understood by user: guided setup required; no secrets in chat",
+    "Railway connected per user; operative tools/account/billing not yet verified"
+  ],
+  "deploy_policy": "Prepare fully and review SHA. User explicitly requested Railway deployment; no subscriptions/upgrades/unbounded spend, no SSH, no unapproved data migration or GitHub push. Verify access/account/costs, actual Google configuration and persistent volume before live release.",
+  "activation_policy": "Only one feature in_progress. Activate next after predecessor code review; external live gates may remain blocked/in_review with code_reviewed=true, never claim done. Codex may activate already specified scope after checks; Claude may not self-authorize.",
+  "resume_required_files": [
+    "AGENTS.md",
+    "progress/current.md",
+    "docs/context/project-context.md",
+    ".project/execution-queue.json (code checkout)"
+  ]
+}
