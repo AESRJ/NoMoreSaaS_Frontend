@@ -4,10 +4,11 @@
   "type": "module",
   "packageManager": "pnpm@12.21.0",
   "engines": {
-    "node": ">=22.22.2"
+    "node": "26.13.1"
   },
   "scripts": {
     "dev": "pnpm --recursive --parallel --stream run dev",
+    "db:migrate": "pnpm --filter @nomoresaas/api run db:migrate",
     "lint": "eslint .",
     "test": "pnpm --recursive run test",
     "build": "pnpm --filter @nomoresaas/web run build",

@@ -7,6 +7,11 @@ test-results/
 .env.*
 !.env.example
 .local/
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+*.db
+*.db-journal
 .mcp.json
 .codex/config.toml
 .claude/settings.local.json
