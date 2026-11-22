@@ -50,7 +50,8 @@ function toSession(data, { requireUser = false } = {}) {
   return { user: { id: data.user.id, email: data.user.email }, csrfToken: data.csrfToken };
 }
 
-async function send(path, { method = 'GET', body, csrfToken, signal } = {}) {
+/** Petición JSON same-origin compartida por los clientes de auth y proyectos. */
+export async function send(path, { method = 'GET', body, csrfToken, signal } = {}) {
   const headers = { Accept: 'application/json' };
   if (method !== 'GET') {
     headers['Content-Type'] = 'application/json';

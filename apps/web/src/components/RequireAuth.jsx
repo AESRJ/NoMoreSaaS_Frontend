@@ -2,17 +2,18 @@ import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { AUTH_STATUS, useAuth } from '../store/auth.js';
 
-// Destino tras entrar o registrarse. Temporal: el catálogo, hasta que T005 habilite /proyectos.
-export const DEFAULT_AFTER_AUTH = '/';
+// Destino tras entrar o registrarse (contracts/ui.md): /proyectos o una ruta
+// privada interna validada.
+export const DEFAULT_AFTER_AUTH = '/proyectos';
 export const REDIRECT_PARAM = 'siguiente';
 
 const INTERNAL_BASE = 'http://interno.invalid';
-const AUTH_PATHS = /^\/(entrar|registro)(\/|$)/;
+const PRIVATE_PATHS = /^\/proyectos(\/|$)/;
 
 /**
- * Devuelve una ruta interna segura o `fallback`. Rechaza URLs absolutas,
- * protocolo relativo (//), barras invertidas, caracteres de control y las
- * propias páginas de acceso (evita bucles).
+ * Devuelve una ruta privada interna segura o `fallback`. Rechaza URLs
+ * absolutas, protocolo relativo (//), barras invertidas, caracteres de control
+ * y cualquier ruta que no sea privada (incluidas las páginas de acceso).
  */
 export function safeRedirectTarget(value, fallback = DEFAULT_AFTER_AUTH) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return fallback;
@@ -24,7 +25,7 @@ export function safeRedirectTarget(value, fallback = DEFAULT_AFTER_AUTH) {
   } catch {
     return fallback;
   }
-  if (url.origin !== INTERNAL_BASE || AUTH_PATHS.test(url.pathname)) return fallback;
+  if (url.origin !== INTERNAL_BASE || !PRIVATE_PATHS.test(url.pathname)) return fallback;
   return `${url.pathname}${url.search}${url.hash}`;
 }
 

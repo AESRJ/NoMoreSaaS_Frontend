@@ -19,6 +19,16 @@ const CSRF_RENEWED_MESSAGE =
   'La protección de la sesión había caducado y ya se ha renovado. Revisa los datos y vuelve a enviar el formulario.';
 const CSRF_NOT_RENEWED_MESSAGE =
   'La protección de la sesión caducó y no se pudo renovar. Tus datos siguen en el formulario: comprueba la conexión y vuelve a enviarlo; antes de enviar se intentará renovar.';
+const WRITE_RENEWED_MESSAGE =
+  'La protección de la sesión había caducado y ya se ha renovado. No se ha guardado ningún cambio: revisa y vuelve a intentarlo.';
+const WRITE_NOT_RENEWED_MESSAGE =
+  'La protección de la sesión caducó y no se pudo renovar. No se ha guardado ningún cambio: comprueba la conexión y vuelve a intentarlo.';
+
+/** Escritura de una cuenta que ya no es la actual: no se envía o su resultado se descarta. */
+export const staleWriteError = () =>
+  new AuthRequestError('stale', 'La sesión ha cambiado de cuenta; no se ha enviado ni guardado nada de la cuenta anterior.');
+
+export const isStaleWrite = (error) => error instanceof AuthRequestError && error.kind === 'stale';
 
 /**
  * @param {{ client?: typeof defaultAuthClient }} [options]
@@ -151,8 +161,43 @@ export function createAuthStore({ client = defaultAuthClient } = {}) {
       }
       if (current !== generation) return null;
       applySession(session);
+      set({ sessionExpired: false });
       announce(message(session.user));
       return session.user;
+    }
+
+    /**
+     * Escritura privada con el CSRF actual. Nunca reintenta: ante 403 espera la
+     * renovación del token y lanza un mensaje veraz; el 401 se propaga para que
+     * la vista conserve sus valores antes de llamar a expireSession().
+     */
+    async function withCsrf(write) {
+      // La escritura pertenece a la cuenta que la inicia. Si al obtener el token,
+      // al responder o al renovar la sesión resulta ser otra, no se envía nada
+      // (o se descarta el resultado) con un error `stale` que la vista ignora.
+      const ownerId = get().user?.id ?? null;
+      const assertSameOwner = () => {
+        if (!ownerId || get().user?.id !== ownerId) throw staleWriteError();
+      };
+      assertSameOwner();
+      const token = await currentCsrfToken();
+      assertSameOwner();
+      let result;
+      try {
+        result = await write(token);
+      } catch (error) {
+        assertSameOwner();
+        if (error instanceof AuthRequestError && error.status === 403 && error.code !== 'FORBIDDEN_ORIGIN') {
+          csrfToken = null;
+          const renewed = await loadSession({ silent: true });
+          assertSameOwner();
+          const message = renewed && csrfToken ? WRITE_RENEWED_MESSAGE : WRITE_NOT_RENEWED_MESSAGE;
+          throw new AuthRequestError('http', message, { status: 403, code: error.code });
+        }
+        throw error;
+      }
+      assertSameOwner();
+      return result;
     }
 
     return {
@@ -160,6 +205,9 @@ export function createAuthStore({ client = defaultAuthClient } = {}) {
       user: null,
       error: null,
       announcement: null,
+      sessionExpired: false, // aviso visible en /entrar tras un 401 de datos privados
+
+      withCsrf,
 
       /** Inicia la carga solo una vez; todas las llamadas comparten la misma petición. */
       ensureSession() {
@@ -197,6 +245,7 @@ export function createAuthStore({ client = defaultAuthClient } = {}) {
           }
         }
         clearIdentity();
+        set({ sessionExpired: false });
         announce('Has cerrado sesión.');
         loadSession({ silent: true });
       },
@@ -205,6 +254,7 @@ export function createAuthStore({ client = defaultAuthClient } = {}) {
       expireSession() {
         invalidatePending();
         clearIdentity();
+        set({ sessionExpired: true });
         announce('Tu sesión ha caducado. Vuelve a entrar para continuar.');
         loadSession({ silent: true });
       },

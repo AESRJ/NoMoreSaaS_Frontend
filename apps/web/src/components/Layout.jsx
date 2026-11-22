@@ -4,10 +4,11 @@ import { AuthRequestError } from '../api/auth.js';
 import { useCatalog } from '../hooks/useCatalog.js';
 import { AUTH_STATUS, useAuth } from '../store/auth.js';
 import { useComparison } from '../store/comparison.js';
+import { clearProjectDraft, retainProjectDraftFor } from '../store/projectDraft.js';
 import { authPathFor } from './RequireAuth.jsx';
 import { SelectionBar } from './SelectionBar.jsx';
 
-/** Acceso para visitante y correo/Salir para la sesión autenticada. Sin enlaces a rutas privadas hasta T005. */
+/** Acceso para visitante; Mis proyectos, correo y Salir para la sesión autenticada. */
 function AccountArea({ onSignedOut }) {
   const status = useAuth((state) => state.status);
   const user = useAuth((state) => state.user);
@@ -35,6 +36,11 @@ function AccountArea({ onSignedOut }) {
   if (status === AUTH_STATUS.authenticated && user) {
     return (
       <div className="account">
+        <ul className="nav-list">
+          <li>
+            <NavLink to="/proyectos">Mis proyectos</NavLink>
+          </li>
+        </ul>
         <span className="account__email" title={user.email}>
           <span className="sr-only">Sesión iniciada como </span>
           {user.email}
@@ -105,8 +111,16 @@ export function Layout() {
     ensureSession();
   }, [ensureSession]);
 
+  // Al autenticarse una cuenta, el borrador en memoria de otra se descarta
+  // aunque no se visite ningún formulario.
+  const userId = useAuth((state) => state.user?.id ?? null);
+  useEffect(() => {
+    if (userId) retainProjectDraftFor(userId);
+  }, [userId]);
+
   // Tras salir: vuelve al catálogo público y lleva el foco al contenido.
   function handleSignedOut() {
+    clearProjectDraft();
     navigate('/');
     mainRef.current?.focus({ preventScroll: false });
   }

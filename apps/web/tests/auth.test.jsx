@@ -322,25 +322,31 @@ describe('store de sesión', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Desde T005 (contracts/ui.md): tras entrar se va a /proyectos o a una ruta
+// privada interna validada; cualquier otro destino cae en /proyectos.
 describe('redirección interna segura', () => {
   it.each([
-    ['/comparar', '/comparar'],
-    ['/saas/drive-nube?x=1#a', '/saas/drive-nube?x=1#a'],
-    ['//evil.example', '/'],
-    ['https://evil.example/', '/'],
-    ['/\\evil.example', '/'],
-    ['javascript:alert(1)', '/'],
-    ['/entrar', '/'],
-    ['/registro?siguiente=/x', '/'],
-    ['/a\nb', '/'],
-    [null, '/'],
+    ['/proyectos/nuevo', '/proyectos/nuevo'],
+    ['/proyectos/11111111-1111-4111-8111-111111111111/editar?x=1#a', '/proyectos/11111111-1111-4111-8111-111111111111/editar?x=1#a'],
+    ['/proyectos', '/proyectos'],
+    ['/comparar', '/proyectos'],
+    ['/proyectosx', '/proyectos'],
+    ['//evil.example', '/proyectos'],
+    ['https://evil.example/proyectos', '/proyectos'],
+    ['/\\evil.example', '/proyectos'],
+    ['javascript:alert(1)', '/proyectos'],
+    ['/entrar', '/proyectos'],
+    ['/registro?siguiente=/x', '/proyectos'],
+    ['/proyectos/a\nb', '/proyectos'],
+    [null, '/proyectos'],
   ])('%s → %s', (input, expected) => {
     expect(safeRedirectTarget(input)).toBe(expected);
   });
 
-  it('authPathFor solo añade destinos internos distintos del catálogo', () => {
-    expect(authPathFor('/entrar', '/comparar')).toBe('/entrar?siguiente=%2Fcomparar');
-    expect(authPathFor('/entrar', '/')).toBe('/entrar');
+  it('authPathFor solo añade destinos privados distintos de /proyectos', () => {
+    expect(authPathFor('/entrar', '/proyectos/nuevo')).toBe('/entrar?siguiente=%2Fproyectos%2Fnuevo');
+    expect(authPathFor('/entrar', '/proyectos')).toBe('/entrar');
+    expect(authPathFor('/entrar', '/comparar')).toBe('/entrar');
     expect(authPathFor('/entrar', '//evil.example')).toBe('/entrar');
   });
 });
@@ -376,9 +382,16 @@ describe('cabecera y estados de sesión', () => {
     expect(client.fetchSession).toHaveBeenCalledTimes(2);
   });
 
-  it('el enlace Entrar conserva la página actual como destino', async () => {
+  it('desde una página pública, Entrar no añade destino (se irá a /proyectos)', async () => {
     renderApp('/comparar');
-    expect(await within(banner()).findByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar?siguiente=%2Fcomparar');
+    expect(await within(banner()).findByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
+  });
+
+  it('autenticado: enlace Mis proyectos en la cabecera', async () => {
+    renderApp('/', {
+      authClient: anonymousAuthClient({ fetchSession: vi.fn(() => Promise.resolve({ user: USER_A, csrfToken: 'a1' })) }),
+    });
+    expect(await within(banner()).findByRole('link', { name: 'Mis proyectos' })).toHaveAttribute('href', '/proyectos');
   });
 
   it('autenticado: correo y Salir; al salir vuelve al catálogo, anuncia y limpia identidad', async () => {
@@ -429,13 +442,13 @@ describe('formulario de entrada', () => {
     expect(screen.queryByText(/olvidaste|recuperar|google|github/i)).not.toBeInTheDocument();
   });
 
-  it('login correcto: redirige al catálogo (destino temporal) y muestra la identidad', async () => {
+  it('login correcto: redirige a /proyectos y muestra la identidad', async () => {
     const client = anonymousAuthClient({ login: vi.fn(() => Promise.resolve({ user: USER_A, csrfToken: 'a1' })) });
     const { user } = renderApp('/entrar', { authClient: client });
     await user.type(await screen.findByLabelText('Correo'), '  Ana@Example.com ');
     await user.type(passwordInput(), STRONG);
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.login).toHaveBeenCalledWith({ email: 'Ana@Example.com', password: STRONG, csrfToken: 'csrf-anon' });
     expect(within(banner()).getByText(USER_A.email)).toBeInTheDocument();
     expect(within(banner()).getByText(`Has entrado como ${USER_A.email}.`)).toBeInTheDocument();
@@ -443,18 +456,18 @@ describe('formulario de entrada', () => {
 
   it('respeta un destino interno y rechaza uno externo', async () => {
     const client = anonymousAuthClient({ login: vi.fn(() => Promise.resolve({ user: USER_A, csrfToken: 'a1' })) });
-    const first = renderApp('/entrar?siguiente=%2Fcomparar', { authClient: client });
+    const first = renderApp('/entrar?siguiente=%2Fproyectos%2Fnuevo', { authClient: client });
     await first.user.type(await screen.findByLabelText('Correo'), USER_A.email);
     await first.user.type(passwordInput(), STRONG);
     await first.user.keyboard('{Enter}');
-    await waitFor(() => expect(location()).toBe('/comparar'));
+    await waitFor(() => expect(location()).toBe('/proyectos/nuevo'));
     first.unmount();
 
     const second = renderApp('/entrar?siguiente=https%3A%2F%2Fevil.example', { authClient: anonymousAuthClient({ login: client.login }) });
     await second.user.type(await screen.findByLabelText('Correo'), USER_A.email);
     await second.user.type(passwordInput(), STRONG);
     await second.user.keyboard('{Enter}');
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
   });
 
   it('credenciales incorrectas: aviso genérico enfocado y valores conservados', async () => {
@@ -500,7 +513,7 @@ describe('formulario de entrada', () => {
     await user.click(busy);
     expect(client.login).toHaveBeenCalledTimes(1);
     await act(async () => pending.resolve({ user: USER_A, csrfToken: 'a1' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
   });
 
   it('403 de CSRF: explica, renueva y no reenvía; el reenvío manual usa el token nuevo', async () => {
@@ -520,7 +533,7 @@ describe('formulario de entrada', () => {
     expect(passwordInput()).toHaveValue(STRONG);
     await waitFor(() => expect(client.fetchSession).toHaveBeenCalledTimes(2));
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.login).toHaveBeenLastCalledWith(expect.objectContaining({ csrfToken: 'nuevo' }));
   });
 
@@ -545,7 +558,7 @@ describe('formulario de entrada', () => {
     expect(emailInput()).toHaveValue(USER_A.email);
     expect(passwordInput()).toHaveValue(STRONG);
     await user.click(screen.getByRole('button', { name: 'Entrar' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.login).toHaveBeenLastCalledWith(expect.objectContaining({ csrfToken: 'nuevo' }));
   });
 
@@ -561,14 +574,14 @@ describe('formulario de entrada', () => {
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Entrar' }));
     await user.keyboard('{Enter}');
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
   });
 
   it('un usuario ya autenticado que abre /entrar va a su destino', async () => {
-    renderApp('/entrar?siguiente=%2Fcomparar', {
+    renderApp('/entrar?siguiente=%2Fproyectos%2Fnuevo', {
       authClient: anonymousAuthClient({ fetchSession: vi.fn(() => Promise.resolve({ user: USER_A, csrfToken: 'a1' })) }),
     });
-    await waitFor(() => expect(location()).toBe('/comparar'));
+    await waitFor(() => expect(location()).toBe('/proyectos/nuevo'));
   });
 });
 
@@ -596,7 +609,7 @@ describe('formulario de registro', () => {
     await user.paste(password);
     expect(passwordInput()).toHaveValue(password);
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.register).toHaveBeenCalledWith({ email: USER_A.email, password, csrfToken: 'csrf-anon' });
     expect(within(banner()).getByText(`Cuenta creada. Has entrado como ${USER_A.email}.`)).toBeInTheDocument();
   });
@@ -651,7 +664,7 @@ describe('formulario de registro', () => {
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No se pudo conectar'));
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.register).toHaveBeenCalledTimes(3);
   });
 
@@ -665,14 +678,14 @@ describe('formulario de registro', () => {
     await user.type(emailInput(), USER_A.email);
     await user.type(passwordInput(), STRONG);
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    await waitFor(() => expect(location()).toBe('/'));
+    await waitFor(() => expect(location()).toBe('/proyectos'));
     expect(client.register).toHaveBeenCalledWith(expect.objectContaining({ csrfToken: 't2' }));
   });
 });
 
 // ---------------------------------------------------------------------------
 describe('guard RequireAuth', () => {
-  function renderGuard(client, path = '/privado?vista=1') {
+  function renderGuard(client, path = '/proyectos/privado?vista=1') {
     const store = createAuthStore({ client });
     const user = userEvent.setup();
     render(
@@ -680,7 +693,7 @@ describe('guard RequireAuth', () => {
         <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route
-              path="/privado"
+              path="/proyectos/privado"
               element={
                 <RequireAuth>
                   <p>Contenido privado</p>
@@ -708,7 +721,7 @@ describe('guard RequireAuth', () => {
   it('visitante: redirige a /entrar conservando el destino', async () => {
     renderGuard(anonymousAuthClient());
     expect(await screen.findByText('Página de entrada')).toBeInTheDocument();
-    expect(location()).toBe('/entrar?siguiente=%2Fprivado%3Fvista%3D1');
+    expect(location()).toBe('/entrar?siguiente=%2Fproyectos%2Fprivado%3Fvista%3D1');
   });
 
   it('error de sesión con reintento y sin redirigir', async () => {
@@ -717,7 +730,7 @@ describe('guard RequireAuth', () => {
     });
     const { user } = renderGuard(client);
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión');
-    expect(location()).toBe('/privado?vista=1');
+    expect(location()).toBe('/proyectos/privado?vista=1');
     await user.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(await screen.findByText('Contenido privado')).toBeInTheDocument();
   });

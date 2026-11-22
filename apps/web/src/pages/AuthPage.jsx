@@ -26,6 +26,7 @@ export function AuthPage({ mode }) {
   const copy = COPY[mode];
   useDocumentTitle(copy.title);
   const status = useAuth((state) => state.status);
+  const sessionExpired = useAuth((state) => state.sessionExpired);
   const [params] = useSearchParams();
   const target = safeRedirectTarget(params.get(REDIRECT_PARAM));
 
@@ -37,6 +38,12 @@ export function AuthPage({ mode }) {
         <h1>{copy.title}</h1>
         <p className="hero__lead">{copy.lead}</p>
       </header>
+      {sessionExpired && (
+        <p className="page-notice" role="status">
+          Tu sesión ha caducado. Vuelve a entrar para continuar; los datos de un formulario sin guardar se recuperarán si entras con
+          la misma cuenta.
+        </p>
+      )}
       <div className="auth-panel">
         <AuthForm key={mode} mode={mode} />
       </div>
