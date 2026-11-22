@@ -91,10 +91,15 @@ test.describe('cuentas y proyectos (API real)', () => {
     // Crear: nombre/descr. con teclado y casillas con Espacio.
     await page.getByLabel('Nombre').fill('Nube familiar');
     await page.getByLabel(/Descripción/).fill('Fotos del móvil.\nDocumentos compartidos.');
-    await tabTo(page, page.getByRole('checkbox', { name: 'Immich' }));
-    await page.keyboard.press('Space');
+    // Las casillas van agrupadas por servicio (Google Drive antes que Google Fotos).
     await tabTo(page, page.getByRole('checkbox', { name: 'Nextcloud' }));
     await page.keyboard.press('Space');
+    await tabTo(page, page.getByRole('checkbox', { name: 'Immich' }));
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('list', { name: 'Reemplazos elegidos' }).getByRole('listitem')).toHaveText([
+      'Google Drive → NextcloudQuitar',
+      'Google Fotos → ImmichQuitar',
+    ]);
     await expectNoPageOverflow(page);
     await page.screenshot({ path: `${SCREENSHOT_DIR}identidad-formulario-${width}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Crear proyecto' }).click();
@@ -105,13 +110,13 @@ test.describe('cuentas y proyectos (API real)', () => {
     // Recarga: sesión y datos persisten.
     await page.reload();
     await expect(page.getByRole('heading', { level: 1, name: 'Nube familiar' })).toBeVisible();
-    await expect(selection(page).getByRole('listitem')).toHaveText(['Immich', 'Nextcloud']);
+    await expect(selection(page).getByRole('listitem')).toHaveText(['Nextcloud', 'Immich']);
 
     // Editar nombre y selección (quitar Immich, añadir Outline).
     await page.getByRole('link', { name: 'Editar' }).click();
     await expect(page.getByLabel('Nombre')).toHaveValue('Nube familiar');
     await page.getByLabel('Nombre').fill('Nube familiar editada');
-    await page.getByRole('button', { name: 'Quitar Immich' }).click();
+    await page.getByRole('button', { name: 'Quitar Google Fotos → Immich' }).click();
     await page.getByRole('checkbox', { name: 'Outline' }).check();
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
     await expect(page.getByText('Cambios guardados.')).toBeVisible();

@@ -54,3 +54,17 @@ export function searchCatalog(index, query) {
   const alternatives = index.data.alternatives.filter(matches);
   return { filtered: true, services, alternatives, total: services.length + alternatives.length };
 }
+
+/**
+ * Servicios a mostrar para un resultado de searchCatalog: los que coinciden por
+ * nombre y los que tienen una alternativa que coincide. No cambia la
+ * coincidencia; solo la agrupa por servicio, en el orden del catálogo.
+ */
+export function servicesForResult(index, result) {
+  if (!result.filtered) return result.services;
+  const ids = new Set(result.services.map((service) => service.id));
+  for (const alternative of result.alternatives) {
+    for (const service of index.servicesForAlternative(alternative.id)) ids.add(service.id);
+  }
+  return index.data.services.filter((service) => ids.has(service.id));
+}

@@ -3,26 +3,12 @@ import { useLocation, useSearchParams } from 'react-router';
 import { SearchForm } from '../components/SearchForm.jsx';
 import { ServiceExplorer } from '../components/ServiceExplorer.jsx';
 import { CatalogGate, EmptyState } from '../components/StatusViews.jsx';
-import { searchCatalog } from '../catalog-index.js';
+import { searchCatalog, servicesForResult } from '../catalog-index.js';
 import { plural } from '../format.js';
 import { useCatalog } from '../hooks/useCatalog.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 
 const FROM_SEARCH = { fromSearch: true };
-
-/**
- * Servicios que se muestran como círculos: los que coinciden por nombre y los
- * que tienen una alternativa que coincide. La coincidencia de searchCatalog no
- * cambia; solo se agrupa por servicio. Conserva el orden del catálogo.
- */
-function visibleServices(index, result) {
-  if (!result.filtered) return result.services;
-  const ids = new Set(result.services.map((service) => service.id));
-  for (const alternative of result.alternatives) {
-    for (const service of index.servicesForAlternative(alternative.id)) ids.add(service.id);
-  }
-  return index.data.services.filter((service) => ids.has(service.id));
-}
 
 // Imagen generada con Higgsfield (job ade277e0-1c97-4ed2-9256-26620b81639d,
 // modelo gpt_image_2_6). Si el archivo no está disponible no se sustituye por
@@ -107,7 +93,7 @@ export function CatalogPage() {
             );
           }
           const result = searchCatalog(index, query);
-          const services = visibleServices(index, result);
+          const services = servicesForResult(index, result);
           return (
             <>
               <SearchForm value={query} onChange={updateQuery} inputRef={inputRef} />

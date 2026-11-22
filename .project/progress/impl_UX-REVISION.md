@@ -36,3 +36,19 @@ Comandos y resultados:
 - `pnpm --filter ./apps/api exec vitest run` → 262/263; el fallo fue timeout de 5 s en db.test.js «limita a 100 proyectos» (archivo no tocado); repetido aislado → 28/28.
 
 Límites: specs e2e antiguos (catalog.spec.js, portada.spec.js, workflow.spec.js) aún esperan la comparación global/tarjetas y no se ejecutaron; su actualización corresponde a T004. Launcher Impeccable sin aprobación (guías leídas directamente).
+
+## T003 — 2026-11-22 (Claude, pendiente de revisión Codex)
+Producto:
+- Nuevo apps/web/src/components/ServiceReplacementPicker.jsx: buscador «Servicio que quieres reemplazar» (misma coincidencia searchCatalog, agrupada por servicio; Enter no envía), grupos por servicio con casillas de sus alternativas, chips ordenados «servicio → alternativa» con «Quitar …», sin duplicados (una alternativa de dos servicios se marca una vez y su chip nombra ambos), límite 10 con casillas deshabilitadas, estado sin coincidencias con «Ver todos los servicios». Retiradas visibles como «No disponible» con indicación de quitarlas y elegir otro reemplazo; no aparecen como seleccionables.
+- apps/web/src/pages/ProjectFormPage.jsx: usa el selector; sin cambios en validación 1–10/únicos, payload (alternativeIds solo si cambia al editar), CSRF, 401/borrador por cuenta, 403/404/red ni aislamiento. Textos «reemplazos».
+- apps/web/src/catalog-index.js: servicesForResult compartido por catálogo y selector (antes privado en CatalogPage). CSS de grupos/buscador del selector.
+
+Pruebas: projects.test.jsx adaptado (lista «Reemplazos elegidos», chips, grupo y orden de Tab) y bloque nuevo 005 US3 (dos servicios por búsqueda, Enter en buscador, quitar/repetir sin duplicar, payload, sin coincidencias, alternativa en dos servicios). e2e identity.spec.js adaptado (orden por servicio, chips, «Quitar Google Fotos → Immich»).
+
+Comandos y resultados:
+- `python tools/check_handoff.py --implementation-ready …` → OK (2 de 4 al empezar).
+- `pnpm lint` → sin errores.
+- `pnpm --filter ./apps/web exec vitest run` → 10 archivos, 164/164.
+- `pnpm exec playwright test tests/e2e/identity.spec.js tests/e2e/workflow.spec.js` (3501/5773 heredados, DB temporal) → 10/10 en 360 y 1280: crear con dos servicios, recargar, editar quitando/añadiendo, 403/red/401 conservan valores, dos identidades aisladas, 401 sin sesión, flujo completo de plan.
+
+Límites: build no repetido (sin cambios de configuración; se ejecutará al integrar en T004). catalog.spec.js y portada.spec.js siguen pendientes de T004.

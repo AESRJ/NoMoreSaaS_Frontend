@@ -60,3 +60,6 @@ Copy de portada/buscador/ayuda de contraseña actualizado según plan; pruebas e
 
 ## 2026-11-22 — T002 005-ajustes-ui (Claude)
 Explorador circular/árbol/comparativa integrada en /, interfaz global de comparación retirada, /comparar redirige internamente. Service.officialUrl/sources opcionales validados y seed con fuentes oficiales revisadas hoy. lint OK, build OK, web 161/161, API catalog 66/66, e2e explorer 8/8 (360/1280, 3501/5773). API completa 262/263 por timeout en db.test.js no tocado; aislado 28/28. Specs e2e antiguos pendientes de T004. Detalle en impl_UX-REVISION.md. Sin git add/commit.
+
+## 2026-11-22 — T003 005-ajustes-ui (Claude)
+ServiceReplacementPicker en crear/editar proyecto: búsqueda por servicio, chips servicio → alternativa, sin duplicados, retiradas visibles; contrato003 intacto. lint OK, web 164/164, e2e identity+workflow 10/10 (360/1280, 3501/5773). catalog/portada e2e pendientes de T004. Sin git add/commit.

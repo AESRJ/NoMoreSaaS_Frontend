@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { AuthRequestError } from '../api/auth.js';
 import { useProjectsClient } from '../api/projects.js';
 import { ProjectNotFound, ProjectsError, ProjectsLoading, isMissing } from '../components/ProjectParts.jsx';
+import { ServiceReplacementPicker } from '../components/ServiceReplacementPicker.jsx';
 import { CatalogGate } from '../components/StatusViews.jsx';
 import { useCatalog } from '../hooks/useCatalog.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
@@ -33,86 +34,12 @@ function validate(values, { availableIds, original }) {
   const ids = values.alternativeIds;
   const unchanged = original && sameList(ids, original);
   if (ids.length < SELECTION_MIN || ids.length > SELECTION_MAX) {
-    errors.alternatives = `Selecciona entre ${SELECTION_MIN} y ${SELECTION_MAX} alternativas.`;
+    errors.alternatives = `Elige entre ${SELECTION_MIN} y ${SELECTION_MAX} reemplazos.`;
   } else if (!unchanged && ids.some((id) => !availableIds.has(id))) {
     // Una selección sin cambios conserva las retiradas; una nueva debe ser completa y real.
-    errors.alternatives = 'Quita las alternativas no disponibles para guardar la nueva selección.';
+    errors.alternatives = 'Quita los reemplazos no disponibles para guardar la nueva selección.';
   }
   return errors;
-}
-
-/** Selección ordenada: lista de elegidas (con retiradas) y casillas del catálogo. */
-function AlternativePicker({ index, ids, onChange, retiredIds, error, errorId }) {
-  const alternatives = useMemo(
-    () => [...index.data.alternatives].sort((a, b) => a.name.localeCompare(b.name, 'es')),
-    [index],
-  );
-  const full = ids.length >= SELECTION_MAX;
-  const nameOf = (id) => index.alternative(id)?.name;
-
-  function toggle(id, checked) {
-    onChange(checked ? [...ids, id] : ids.filter((current) => current !== id));
-  }
-
-  return (
-    <fieldset className="field picker" aria-describedby={error ? errorId : undefined}>
-      <legend className="field__label">
-        Alternativas ({ids.length} de {SELECTION_MAX})
-      </legend>
-      <p className="field__hint">Elige entre {SELECTION_MIN} y {SELECTION_MAX}; se guardan en el orden en que las añades.</p>
-      {error && (
-        <p id={errorId} className="field__error">
-          {error}
-        </p>
-      )}
-      {ids.length > 0 && (
-        <ol className="picker__selected" aria-label="Alternativas seleccionadas">
-          {ids.map((id) => {
-            const retired = retiredIds.has(id);
-            const label = retired ? `No disponible (${id})` : nameOf(id) ?? id;
-            return (
-              <li key={id} className="picker__item">
-                {retired ? (
-                  <span className="retired">
-                    <span className="tag tag--retired">No disponible</span> <code className="retired__id">{id}</code>
-                  </span>
-                ) : (
-                  <span>{label}</span>
-                )}
-                <button
-                  type="button"
-                  className="button button--ghost button--small"
-                  aria-label={`Quitar ${label}`}
-                  onClick={() => toggle(id, false)}
-                >
-                  Quitar
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      <ul className="picker__options">
-        {alternatives.map((alternative) => {
-          const checked = ids.includes(alternative.id);
-          return (
-            <li key={alternative.id}>
-              <label className="picker__option">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={!checked && full}
-                  onChange={(event) => toggle(alternative.id, event.target.checked)}
-                />
-                <span>{alternative.name}</span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-      {full && <p className="field__hint">Has llegado al máximo de {SELECTION_MAX}. Quita alguna para elegir otra.</p>}
-    </fieldset>
-  );
 }
 
 function ProjectForm({ project, progressCount = 0 }) {
@@ -305,13 +232,15 @@ function ProjectForm({ project, progressCount = 0 }) {
       <div ref={pickerRef}>
         <CatalogGate catalog={catalog}>
           {(index) => (
-            <AlternativePicker
+            <ServiceReplacementPicker
               index={index}
               ids={values.alternativeIds}
               onChange={(next) => update('alternativeIds', next)}
               retiredIds={retiredIds}
               error={fieldErrors.alternatives}
               errorId={ids.alternativesError}
+              min={SELECTION_MIN}
+              max={SELECTION_MAX}
             />
           )}
         </CatalogGate>
@@ -380,7 +309,7 @@ function NewProject() {
       </nav>
       <header className="page-header">
         <h1>Nuevo proyecto</h1>
-        <p className="hero__lead">Guarda una selección de alternativas del catálogo con un nombre y una descripción.</p>
+        <p className="hero__lead">Ponle nombre y elige qué reemplazar en cada servicio que usas.</p>
       </header>
       <div className="auth-panel">
         <ProjectForm key={userId} />

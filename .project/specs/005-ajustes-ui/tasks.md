@@ -11,7 +11,7 @@ Meta: las historias de spec.md y criterios observables de quickstart.md.
 
 - [X] T002 [US2] Conservar data-model.md Service.id, data-model.md Service.name, data-model.md Service.description y construir explorador circular/árbol/comparativa integrada en apps/web/src y retirar interfaz global de comparación; conservar ficha y redirección interna /comparar. Metadatos oficiales deService y validación opcional en apps/api/data/catalog.json y src/catalog.js según data-model.md Service.officialUrl, Service.sources; estado según ExplorerState.activeServiceId, ExplorerState.activeAlternativeId, ExplorerState.query. Curar fuentes sin paridad/precios inventados. FR002/003/004/007. Verificar selección/cambio/teclado/reducedmotion y rutas antiguas con smoke enfocado.
 
-- [ ] T003 [US3] Implementar ServiceReplacementPicker y usarlo en ProjectFormPage para crear/editar por servicio conocido, chips/quitar y retiradas. data-model.md ProjectSelection.alternativeIds; persistencia003 intacta. FR005. Verificar dos servicios, duplicados/quitar, edición/reintento/401 y aislamiento existente.
+- [X] T003 [US3] Implementar ServiceReplacementPicker y usarlo en ProjectFormPage para crear/editar por servicio conocido, chips/quitar y retiradas. data-model.md ProjectSelection.alternativeIds; persistencia003 intacta. FR005. Verificar dos servicios, duplicados/quitar, edición/reintento/401 y aislamiento existente.
 
 - [ ] T004 [US4] Integrar y corregir regresiones005 dentro de alcance; actualizar pruebas viejas del recorrido global obsoleto conservando intención de búsqueda/selección/privacidad. README/contexto/evidencia breves .project/progress/impl_UX-REVISION.md. FR001–007/SC001–003. Lint/build, tests afectados y smoke navegador360/1280; Codex revisa/cierra, no Claude.
 

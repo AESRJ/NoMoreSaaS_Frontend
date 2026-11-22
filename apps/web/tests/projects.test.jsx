@@ -4,6 +4,7 @@ import { AuthRequestError } from '../src/api/auth.js';
 import { createProject, deleteProject, listProjects, updateProject } from '../src/api/projects.js';
 import { createAuthStore } from '../src/store/auth.js';
 import { clearProjectDraft, saveProjectDraft, takeProjectDraft } from '../src/store/projectDraft.js';
+import { catalogFixture } from './fixtures.js';
 import { anonymousAuthClient, emptyProjectsClient, renderApp } from './helpers.jsx';
 
 const USER_A = { id: '11111111-1111-4111-8111-111111111111', email: 'ana@example.com' };
@@ -208,11 +209,11 @@ describe('crear proyecto', () => {
     });
     const { user } = renderApp('/proyectos/nuevo', { authClient: signedIn(), projectsClient: client });
     await fillValid(user);
-    expect(within(screen.getByRole('list', { name: 'Alternativas seleccionadas' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'FoteroQuitar',
-      'ArchiveroQuitar',
+    expect(within(screen.getByRole('list', { name: 'Reemplazos elegidos' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Fotos Nube → FoteroQuitar',
+      'Drive Nube → ArchiveroQuitar',
     ]);
-    expect(screen.getByRole('button', { name: 'Quitar Fotero' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quitar Fotos Nube → Fotero' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Crear proyecto' }));
     await waitFor(() => expect(location()).toBe(`/proyectos/${P1}`));
     expect(client.createProject).toHaveBeenCalledWith(
@@ -230,7 +231,7 @@ describe('crear proyecto', () => {
     expect(nameInput()).toHaveAttribute('aria-invalid', 'true');
     expect(nameInput()).toHaveAccessibleDescription(/entre 3 y 80 caracteres.*ahora tiene 0/i);
     expect(document.activeElement).toBe(nameInput());
-    expect(screen.getByRole('group', { name: /Alternativas/ })).toHaveAccessibleDescription('Selecciona entre 1 y 10 alternativas.');
+    expect(screen.getByRole('group', { name: /Reemplazos/ })).toHaveAccessibleDescription('Elige entre 1 y 10 reemplazos.');
 
     await user.click(nameInput());
     await user.paste('😀'.repeat(81));
@@ -353,7 +354,7 @@ describe('crear proyecto', () => {
     expect(client.createProject).not.toHaveBeenCalled();
   });
 
-  it('teclado: Nombre → Descripción → casillas; Espacio marca y Enter envía', async () => {
+  it('teclado: Nombre → Descripción → buscador de servicio → casillas; Espacio marca y Enter envía', async () => {
     const client = emptyProjectsClient({ createProject: vi.fn(() => Promise.resolve(project())), getProject: vi.fn(() => Promise.resolve(project())) });
     const { user } = renderApp('/proyectos/nuevo', { authClient: signedIn(), projectsClient: client });
     (await screen.findByLabelText('Nombre')).focus();
@@ -361,12 +362,79 @@ describe('crear proyecto', () => {
     await user.tab();
     expect(document.activeElement).toBe(descriptionInput());
     await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Servicio que quieres reemplazar' }));
+    await user.tab();
     expect(document.activeElement).toBe(box('Archivero'));
     await user.keyboard(' ');
     expect(box('Archivero')).toBeChecked();
     nameInput().focus();
     await user.keyboard('{Enter}');
     await waitFor(() => expect(client.createProject).toHaveBeenCalledWith({ name: 'Teclado', description: '', alternativeIds: ['archivero'] }, { csrfToken: 'a1' }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('005 US3: elegir reemplazos por servicio conocido', () => {
+  const search = () => screen.getByRole('searchbox', { name: 'Servicio que quieres reemplazar' });
+  const chips = () => within(screen.getByRole('list', { name: 'Reemplazos elegidos' })).getAllByRole('listitem').map((li) => li.textContent);
+
+  it('dos servicios buscados por su nombre: chips servicio → alternativa, quitar y repetir sin duplicar', async () => {
+    const client = emptyProjectsClient({ createProject: vi.fn(() => Promise.resolve(project())), getProject: vi.fn(() => Promise.resolve(project())) });
+    const { user } = renderApp('/proyectos/nuevo', { authClient: signedIn(), projectsClient: client });
+    await user.type(await screen.findByLabelText('Nombre'), 'Dos servicios');
+
+    await user.type(search(), 'drive');
+    expect(screen.getAllByRole('group', { name: /Nube$/ }).map((group) => group.textContent)).toEqual(['Drive NubeArchivero']);
+    expect(screen.getByText('1 servicio coincide.')).toBeInTheDocument();
+    await user.click(within(screen.getByRole('group', { name: 'Drive Nube' })).getByRole('checkbox', { name: 'Archivero' }));
+    // Enter en el buscador no envía el proyecto.
+    search().focus();
+    await user.keyboard('{Enter}');
+    expect(client.createProject).not.toHaveBeenCalled();
+
+    await user.clear(search());
+    await user.type(search(), 'FORJA');
+    const forja = screen.getByRole('group', { name: 'Forja Nube' });
+    await user.click(within(forja).getByRole('checkbox', { name: 'Gitero' }));
+    await user.click(within(forja).getByRole('checkbox', { name: 'GitLibre' }));
+    expect(chips()).toEqual(['Drive Nube → ArchiveroQuitar', 'Forja Nube → GiteroQuitar', 'Forja Nube → GitLibreQuitar']);
+
+    // Desmarcar y volver a marcar no duplica; quitar desde el chip desmarca la casilla.
+    await user.click(within(forja).getByRole('checkbox', { name: 'Gitero' }));
+    await user.click(within(forja).getByRole('checkbox', { name: 'Gitero' }));
+    await user.click(screen.getByRole('button', { name: 'Quitar Forja Nube → GitLibre' }));
+    expect(within(forja).getByRole('checkbox', { name: 'GitLibre' })).not.toBeChecked();
+    expect(chips()).toEqual(['Drive Nube → ArchiveroQuitar', 'Forja Nube → GiteroQuitar']);
+
+    await user.click(screen.getByRole('button', { name: 'Crear proyecto' }));
+    await waitFor(() =>
+      expect(client.createProject).toHaveBeenCalledWith(
+        { name: 'Dos servicios', description: '', alternativeIds: ['archivero', 'gitero'] },
+        { csrfToken: 'a1' },
+      ),
+    );
+  });
+
+  it('sin coincidencias lo dice y permite volver a ver todos; la selección se conserva al filtrar', async () => {
+    const { user } = renderApp('/proyectos/nuevo', { authClient: signedIn() });
+    await user.click(await screen.findByRole('checkbox', { name: 'Fotero' }));
+    await user.type(search(), 'inexistente');
+    expect(screen.getByText('Ningún servicio coincide con «inexistente».')).toBeInTheDocument();
+    expect(chips()).toEqual(['Fotos Nube → FoteroQuitar']);
+    await user.click(screen.getByRole('button', { name: 'Ver todos los servicios' }));
+    expect(search()).toHaveValue('');
+    expect(screen.getByRole('checkbox', { name: 'Fotero' })).toBeChecked();
+  });
+
+  it('una alternativa de dos servicios se elige una sola vez y su chip nombra ambos', async () => {
+    const data = catalogFixture();
+    data.relations.push({ serviceId: 'drive', alternativeId: 'gitero', coverage: 'Guarda archivos en repositorios.' });
+    const { user } = renderApp('/proyectos/nuevo', { authClient: signedIn(), data });
+    const boxes = await screen.findAllByRole('checkbox', { name: 'Gitero' });
+    expect(boxes).toHaveLength(2);
+    await user.click(boxes[0]);
+    for (const box of screen.getAllByRole('checkbox', { name: 'Gitero' })) expect(box).toBeChecked();
+    expect(chips()).toEqual(['Drive Nube, Forja Nube → GiteroQuitar']);
   });
 });
 
@@ -483,7 +551,7 @@ describe('editar proyecto', () => {
     const { user } = renderApp(`/proyectos/${P1}/editar`, { authClient: signedIn(), projectsClient: client });
     const name = await screen.findByLabelText('Nombre');
     expect(name).toHaveValue('Mi nube');
-    const selected = screen.getByRole('list', { name: 'Alternativas seleccionadas' });
+    const selected = screen.getByRole('list', { name: 'Reemplazos elegidos' });
     expect(within(selected).getByText('No disponible')).toBeInTheDocument();
     expect(within(selected).getByText('retirada-vieja')).toBeInTheDocument();
     await user.clear(name);
@@ -502,7 +570,9 @@ describe('editar proyecto', () => {
     const { user } = renderApp(`/proyectos/${P1}/editar`, { authClient: signedIn(), projectsClient: client });
     await user.click(await screen.findByRole('checkbox', { name: 'Gitero' }));
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
-    expect(screen.getByRole('group', { name: /Alternativas/ })).toHaveAccessibleDescription(/Quita las alternativas no disponibles/);
+    expect(screen.getByRole('group', { name: /Reemplazos/ })).toHaveAccessibleDescription(/Quita los reemplazos no disponibles/);
+    // La retirada sigue visible y explica cómo sustituirla.
+    expect(screen.getByText(/ya no está en el catálogo; quítala y elige otro reemplazo/i)).toBeInTheDocument();
     expect(client.updateProject).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Quitar No disponible (retirada-vieja)' }));
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
