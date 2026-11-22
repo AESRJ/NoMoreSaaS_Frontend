@@ -1,8 +1,93 @@
-import { useEffect, useRef } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { AuthRequestError } from '../api/auth.js';
 import { useCatalog } from '../hooks/useCatalog.js';
+import { AUTH_STATUS, useAuth } from '../store/auth.js';
 import { useComparison } from '../store/comparison.js';
+import { authPathFor } from './RequireAuth.jsx';
 import { SelectionBar } from './SelectionBar.jsx';
+
+/** Acceso para visitante y correo/Salir para la sesión autenticada. Sin enlaces a rutas privadas hasta T005. */
+function AccountArea({ onSignedOut }) {
+  const status = useAuth((state) => state.status);
+  const user = useAuth((state) => state.user);
+  const logout = useAuth((state) => state.logout);
+  const reloadSession = useAuth((state) => state.reloadSession);
+  const { pathname, search, hash } = useLocation();
+  const [logoutError, setLogoutError] = useState(null);
+  const [leaving, setLeaving] = useState(false);
+  const here = `${pathname}${search}${hash}`;
+
+  async function handleLogout() {
+    if (leaving) return;
+    setLeaving(true);
+    setLogoutError(null);
+    try {
+      await logout();
+      onSignedOut();
+    } catch (error) {
+      setLogoutError(error instanceof AuthRequestError ? error.message : 'No se pudo cerrar la sesión. Inténtalo de nuevo.');
+    } finally {
+      setLeaving(false);
+    }
+  }
+
+  if (status === AUTH_STATUS.authenticated && user) {
+    return (
+      <div className="account">
+        <span className="account__email" title={user.email}>
+          <span className="sr-only">Sesión iniciada como </span>
+          {user.email}
+        </span>
+        <button
+          type="button"
+          className="button button--ghost button--small"
+          onClick={handleLogout}
+          aria-disabled={leaving ? true : undefined}
+        >
+          {leaving ? 'Saliendo…' : 'Salir'}
+        </button>
+        {logoutError && (
+          <p className="account__error" role="alert">
+            {logoutError}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (status === AUTH_STATUS.anonymous) {
+    // Conserva la página actual como destino tras entrar (solo rutas internas).
+    const onAuthPage = pathname === '/entrar' || pathname === '/registro';
+    const target = onAuthPage ? undefined : here;
+    return (
+      <ul className="account nav-list">
+        <li>
+          <NavLink to={authPathFor('/entrar', target)}>Entrar</NavLink>
+        </li>
+        <li>
+          <NavLink className="account__cta" to={authPathFor('/registro', target)}>
+            Crear cuenta
+          </NavLink>
+        </li>
+      </ul>
+    );
+  }
+
+  if (status === AUTH_STATUS.error) {
+    return (
+      <div className="account">
+        <span className="account__status">Sesión no disponible</span>
+        <button type="button" className="button button--ghost button--small" onClick={reloadSession}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  // Desconocido/cargando: hueco reservado, sin mostrar identidad aún.
+  return <div className="account account--pending" aria-hidden="true" />;
+}
 
 export function Layout() {
   const { index } = useCatalog();
@@ -11,6 +96,20 @@ export function Layout() {
   const { pathname } = useLocation();
   const mainRef = useRef(null);
   const firstRender = useRef(true);
+  const navigate = useNavigate();
+  const ensureSession = useAuth((state) => state.ensureSession);
+  const announcement = useAuth((state) => state.announcement);
+
+  // Una sola petición de sesión compartida por toda la SPA.
+  useEffect(() => {
+    ensureSession();
+  }, [ensureSession]);
+
+  // Tras salir: vuelve al catálogo público y lleva el foco al contenido.
+  function handleSignedOut() {
+    navigate('/');
+    mainRef.current?.focus({ preventScroll: false });
+  }
 
   // Con datos cargados, retira IDs que ya no existen en el catálogo.
   useEffect(() => {
@@ -39,24 +138,30 @@ export function Layout() {
             </span>
             NoMoreSaaS
           </Link>
-          <nav aria-label="Principal">
-            <ul className="nav-list">
-              <li>
-                <NavLink to="/" end>
-                  Catálogo
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/comparar">
-                  Comparar
-                  <span className={`nav-count${count ? '' : ' nav-count--empty'}`} aria-hidden="true">
-                    {count}
-                  </span>
-                </NavLink>
-              </li>
-            </ul>
-          </nav>
+          <div className="site-header__end">
+            <nav aria-label="Principal">
+              <ul className="nav-list">
+                <li>
+                  <NavLink to="/" end>
+                    Catálogo
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/comparar">
+                    Comparar
+                    <span className={`nav-count${count ? '' : ' nav-count--empty'}`} aria-hidden="true">
+                      {count}
+                    </span>
+                  </NavLink>
+                </li>
+              </ul>
+            </nav>
+            <AccountArea onSignedOut={handleSignedOut} />
+          </div>
         </div>
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcement ? <span key={announcement.id}>{announcement.text}</span> : null}
+        </p>
       </header>
       <main id="contenido" ref={mainRef} tabIndex={-1} className="site-main">
         <Outlet />

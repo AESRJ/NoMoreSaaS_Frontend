@@ -22,7 +22,9 @@ describe('US1: catálogo público', () => {
     for (const name of ['Archivero', 'Fotero', 'Gitero', 'GitLibre']) {
       expect(within(alternatives).getByRole('link', { name })).toBeInTheDocument();
     }
-    expect(screen.queryByText(/iniciar sesión|registrarse|crear cuenta/i)).not.toBeInTheDocument();
+    // Desde 003 la cabecera ofrece Entrar/Crear cuenta (contracts/ui.md); el
+    // catálogo en sí sigue sin pedir cuenta.
+    expect(within(screen.getByRole('main')).queryByText(/iniciar sesión|registrarse|crear cuenta/i)).not.toBeInTheDocument();
   });
 
   it('cada SaaS enlaza a sus alternativas relacionadas', async () => {
