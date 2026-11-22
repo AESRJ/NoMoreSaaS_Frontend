@@ -322,11 +322,14 @@ export function createAuth({
     res.status(204).end();
   });
 
-  router.use((error, _req, res, next) => {
+  // Traduce errores del parser/hasher a errores públicos; reutilizable por
+  // cualquier router que use `mutationBody` (p. ej. /api/projects).
+  function mapPublicErrors(error, _req, res, next) {
     const publicError = toPublicError(error);
     if (publicError.retryAfterSeconds) res.set('Retry-After', String(publicError.retryAfterSeconds));
     next(publicError);
-  });
+  }
+  router.use(mapPublicErrors);
 
   // Limpieza periódica de sesiones vencidas y claves caducadas del limitador.
   const timer = setInterval(() => {
@@ -347,6 +350,7 @@ export function createAuth({
     requireUser,
     requireCsrf,
     mutationBody,
+    mapPublicErrors,
     store,
     limiters,
     close() {

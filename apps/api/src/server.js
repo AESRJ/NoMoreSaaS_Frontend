@@ -4,6 +4,7 @@ import { createAuth } from './auth.js';
 import { DEFAULT_CATALOG_PATH, loadCatalog } from './catalog.js';
 import { loadConfig } from './config.js';
 import { DatabaseError, loadMigrations, openDatabase } from './db.js';
+import { createProjects } from './projects.js';
 
 /**
  * Comprueba que la DB tiene exactamente las migraciones de este código. El
@@ -38,6 +39,7 @@ export async function startServer({
   const config = loadConfig(env);
   const db = openDatabase(config.databasePath);
   let auth;
+  let projects;
   try {
     assertMigrated(db);
     auth = createAuth({
@@ -47,11 +49,13 @@ export async function startServer({
       cookieSecure: config.cookieSecure,
       ...(now ? { now } : {}),
     });
+    projects = createProjects({ db, catalog, auth, ...(now ? { now } : {}) });
   } catch (error) {
+    auth?.close();
     db.close();
     throw error;
   }
-  const app = createApp({ catalog, logger, auth });
+  const app = createApp({ catalog, logger, auth, projects });
   return new Promise((resolve, reject) => {
     const server = app.listen(port, host, (error) => {
       if (error) {

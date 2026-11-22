@@ -6,11 +6,18 @@ import { createErrorHandler, invalidId, notFound, notFoundHandler } from './erro
 /**
  * Crea la aplicación Express a partir de un catálogo ya validado. El catálogo
  * es público y no usa sesión; `auth` (de createAuth) es opcional y, si se
- * inyecta, monta /api/auth. No abre puertos: `server.js` se encarga de `listen`.
- * @param {{ catalog: object, logger?: Pick<Console, 'error'>, auth?: { router: import('express').Router } }} options
+ * inyecta, monta /api/auth. `projects` (de createProjects, requiere auth) monta
+ * /api/projects. No abre puertos: `server.js` se encarga de `listen`.
+ * @param {{
+ *   catalog: object,
+ *   logger?: Pick<Console, 'error'>,
+ *   auth?: { router: import('express').Router },
+ *   projects?: { router: import('express').Router },
+ * }} options
  */
-export function createApp({ catalog, logger = console, auth }) {
+export function createApp({ catalog, logger = console, auth, projects }) {
   if (!catalog) throw new Error('createApp requiere un catálogo validado');
+  if (projects && !auth) throw new Error('createApp: /api/projects requiere auth');
 
   const app = express();
   app.disable('x-powered-by');
@@ -19,6 +26,7 @@ export function createApp({ catalog, logger = console, auth }) {
   app.use(helmet());
 
   if (auth) app.use('/api/auth', auth.router);
+  if (projects) app.use('/api/projects', projects.router);
 
   const api = express.Router();
 
