@@ -33,3 +33,9 @@ Se aisla `vite-config.test.js` de los puertos heredados con vi.stubEnv/unstubAll
 ## 2026-11-22 - Revision y cierre003 por Codex
 
 T001-T006 aceptadas tras revision independiente:lint,213API,150web,build y30e2e correctos, verificador actual/clon limpio y reinicio realAPI a360/1280. Entrega003closed; MVP-IDENTIDADdone. Cuota deClaude restablecida y correcciones terminadas; sin sustituirconstructor ni publicar. Evidencia:review_MVP-IDENTIDAD.md.
+
+## 2026-11-22 — Entrega004
+Codex especifica/planifica siete tareas para cierre del flujo; Outline wiki confirmado. Investigación oficial con agente auxiliar, sin producto modificado por Codex. Higgsfield MCP registrado mediante claude mcp add; login rechazado porque el servidor de proyecto espera aprobación interactiva. Sin evasión. init maestro estructura OK; PATH de esta shell requiere rutas Node/Claude explícitas. Ejecución y evidencia activa solo .project/ del código.
+
+## 2026-11-22 — Cierre004
+Asistencia: Codex planificación/revisión/documentación; Claude construcciónT001–T006. Última cuotaClaude agotada tras ajustes de selección/paleta; verificación independiente de esa revisión pasó. T007 consolida solo revisión/docs, smoke ya construido por Claude. Comandos: pnpm lint/build/test (254API/169web), API_PORT3501 WEB_PORT5773 pnpm exec playwright test (38/38); revisiónUI5583/API3351 conDBtemporal, clipboardreal/progreso trasrecarga y reinicioAPI. DBpreviewrespaldada conVACUUM INTO antesmigración002, datos previos intactos. Higgsfield generaciónúnica/jobade277e0, binario local validado. Primer scriptQAUI usó roltextbox incorrecto para search; corregido asearchbox y pasó, sin cambiar producto. Sin push/SSH/despliegue. Código y docs permanecen en sus checkouts separados. Commits por tarea con AESRJ, fechas reales y sin esperas artificiales por prioridad final del usuario.

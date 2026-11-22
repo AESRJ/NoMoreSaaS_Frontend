@@ -1,2 +1,2 @@
 # Estado actual
-MVP-CIERRE/004 activo y ready: siete tareas, una por invocación Claude, Codex revisa/commitea.002/003 cerradas. Fuentes .project/specs/004-flujo-final y entrega004. Preview5573/API3301, no usar esos puertos para tests. Higgsfield registrado pero pendiente aprobación del cliente/OAuth; no declarar imagen generada.
+2026-11-22: MVP-CIERRE/004 closed, siete tareas aceptadas. Claude construyó producto/pruebas T001–T006; Codex verificó/documentóT007 dentro de su rol. Lint/build,254API/169web/38e2e correctos; imagenHiggsfield real, UI360/1280/clipboard y persistencia conreinicio correctos. Entregas002/003 también cerradas. Preview5573/API3301, DBrespaldada/migrada002, sin push/despliegue. No modificar producto sin nueva entrega ready. Ver review_MVP-CIERRE.md.

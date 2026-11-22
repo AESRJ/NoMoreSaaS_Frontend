@@ -10,8 +10,20 @@ Repositorio de codigo separado de [la planificacion y arnes maestro](https://git
 
 ## Incrementos
 
-- Catalogo publico de alternativas autoalojables (3 SaaS, 4 alternativas curadas con fuentes oficiales y fecha), busqueda, fichas con fuentes y comparacion de 2 a 3 alternativas. Sigue sin requerir cuenta.
-- Cuentas y proyectos privados (entrega 003): registro, entrada y salida con correo y contrasena (Argon2id, sesion de servidor persistente en SQLite, cookie HttpOnly/SameSite=Lax, CSRF sincronizador). Cada cuenta crea, edita y borra (con confirmacion) hasta 100 proyectos con nombre, descripcion y 1-10 alternativas del catalogo; nadie mas puede verlos. Sin verificacion o recuperacion de correo, OAuth, borrado de cuenta, estimador, instalacion de servicios ni despliegue.
+- Catalogo publico de alternativas autoalojables (5 SaaS, 5 alternativas curadas con fuentes oficiales y fecha), busqueda, fichas con fuentes y comparacion de 2 a 3 alternativas. Sigue sin requerir cuenta.
+- Cuentas y proyectos privados (entrega 003): registro, entrada y salida con correo y contrasena (Argon2id, sesion de servidor persistente en SQLite, cookie HttpOnly/SameSite=Lax, CSRF sincronizador). Cada cuenta crea, edita y borra (con confirmacion) hasta 100 proyectos con nombre, descripcion y 1-10 alternativas del catalogo; nadie mas puede verlos. Sin verificacion o recuperacion de correo, OAuth, borrado de cuenta, instalacion de servicios ni despliegue.
+
+## Flujo final disponible (004)
+
+Catálogo: Nextcloud, Immich, Matrix/Synapse, WireGuard y Outline wiki. Se retiraron GitHub/Gitea/Forgejo de nuevas selecciones; los proyectos antiguos conservan sus referencias. Outline es código disponible bajo BSL1.1, no open source.
+
+1. Explorar fichas/fuentes y comparar alternativas; crear cuenta o entrar.
+2. Crear proyecto y abrir **Equipo, evaluación y plan**.
+3. Guardar hardware y carga prevista; revisar estimación, ecuaciones, fuentes y condiciones pendientes.
+4. Abrir Plan, copiar prompts por etapa y marcar avances; recargar conserva datos.
+5. Editar equipo/selección recalcula el plan y evita aplicar avances de otra versión.
+
+Recursos orientativos con presupuesto editorial y márgenes explícitos; no son un benchmark ni garantía. Prompts mediante plantillas, sin claves de IA ni instalaciones automáticas. Migración002 aditiva, respaldar DB existente antes de migrar. Preview local configurado en esta máquina: http://127.0.0.1:5573 (API3301).
 
 ## Requisitos
 

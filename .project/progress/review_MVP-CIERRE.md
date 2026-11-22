@@ -18,3 +18,8 @@ Smoke real del flujo2/2 a360/1280 y16/16web de workflow pasan independientemente
 
 ## T006 aceptada
 Claude generó/integró imagen Higgsfield y aplicó ajustes finales; su cuota5h se agotó tras escribir los últimos cambios (restablecimiento14:20). Codex no modificó código de producto. Revisión independiente final: lint/build correctos,254API/169web/38e2e pasan; PNG/hash/dimensiones/paleta real verificados y capturas360/1280 inspeccionadas. Prueba UI adicional real: imagen carga, clipboard contiene prompt, avance permanece trasrecarga, ceroerrores/desbordamiento. Banda vacía/privada oculta y avisos en paleta corregidos. T007 queda solo consolidación/revisión/documentación; smoke de producto ya implementado por Claude enT005/T006.
+
+## T007 — Aceptación final de revisión/documentación
+FR001–010 y SC001–005 cubiertos por código construido por Claude y verificación independiente registrada arriba. Catálogo cinco fichas; hardware/estimación con fuentes y supuestos; planes/prompts/avance privado; invalidación/reinicio; paleta/imagen reales; recorrido completo360/1280. Smoke añadido por ClaudeT005/T006; T007 no requirió construcción adicional ni cambios de arquitectura. Codex realiza revisión/documentación dentro de su rol.
+
+Límites del MVP local: sin SSH, instalaciones automáticas o despliegue; sin recuperación/verificación de correo ni borrado de cuenta; estimaciones orientativas y plantillas no sustituyen la documentación de cada versión; CI remota del incremento no comprobada. No se promete funcionamiento de los servicios en un servidor real a partir del prototipo.

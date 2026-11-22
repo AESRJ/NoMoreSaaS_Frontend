@@ -8,3 +8,7 @@ React/Vite/React Router/Zustand/pnpm, Express/JavaScript ESM y SQLite actuales. 
 Privacidad003 se conserva: ownership desde sesión, CSRF/Origin, revocación y estado privado aislado. Estimaciones editoriales con fuentes/supuestos y desconocidos explícitos, sin garantías inventadas. Prompts guían; no ejecutan instalaciones ni conectan servidores. Verificar esencial por tarea, lint/build/smoke final; no fingir pruebas omitidas.
 
 Invocar Impeccable antes de UI. No crear PRODUCT.md/DESIGN.md ni informes de su mejora: instrucción usuario. Paleta exacta004 y computadora central Higgsfield, nunca atribuirle otro origen. MCP requiere aprobación cliente/OAuth pendiente, no eludirla; seguir trabajo independiente y registrar bloqueo real. NotebookLM auxiliar si disponible; fallos no detienen fuentes Git.
+
+
+## Estado vigente tras revisión004
+Entrega004 CLOSED y siete tareas aceptadas; no reejecutar instrucciones de entrega ready anteriores. Antes de construir otra funcionalidad, Codex debe preparar nueva entrega ready. T007 consolidada por Codex solo mediante revisión, verificaciones y documentación; todo código de producto y nuevas pruebas fueron escritos por ClaudeT001–T006.

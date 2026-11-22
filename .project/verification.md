@@ -23,3 +23,8 @@ La expiracion por inactividad/absoluta y el reinicio con la misma DB se prueban 
 Capturas a 360/1280 en `.local/screenshots/` (no versionado). Resultados reales en `.project/progress/impl_MVP-CATALOGO.md` y `impl_MVP-IDENTIDAD.md`; revision de seguridad breve en `security_MVP-IDENTIDAD.md`.
 
 CI: `.github/workflows/catalog.yml` repite los mismos pasos y el verificador de entrega; no se ha comprobado aqui su ejecucion en GitHub.
+
+## Cierre004 — 2026-11-22
+Revisión independiente: `pnpm lint`, `pnpm build`, `pnpm test` (254API/169web), `API_PORT=3501 WEB_PORT=5773 pnpm exec playwright test` (38/38, variables establecidas en PowerShell antes de invocar pnpm). Suites completas ejecutadas una vez al cierre tras los últimos cambios; sin repetirlas tras documentación.
+Nuevos e2e: workflow.spec.js (perfil/evaluación/plan/avance/401) y portada.spec.js (PNGreal200/hash/dimensiones, paleta calculada y computadora centrada). Prueba adicional del revisor con API3351/web5583/DBtemporal: clipboard real, progreso trasrecarga, sin errores/desbordamiento360/1280. Integración API con reinicio real conserva sesión/perfil/avance y verifica ownership/CSRF/409.
+Higgsfieldjob ade277e0-1c97-4ed2-9256-26620b81639d; PNGlocal766682bytes/SHA2566acf743b9e6bd95e06b45d06a2d37b45735b7d4feec26a024f1e8101b46012f4. No depender de URL temporal del proveedor en el producto. Ver review_MVP-CIERRE.md para aceptación y límites. CI conserva comandos equivalentes; ejecución remota de esta rama no comprobada, sin push.

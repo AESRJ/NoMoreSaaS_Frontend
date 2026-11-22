@@ -25,10 +25,12 @@ Meta independiente: todas las vistas coherentes en móvil y escritorio.
 - [X] T006 [US4] Aplicar paleta exacta de spec FR009 a apps/web/src y computadora focal central en portada. Invocar Impeccable, sin generar PRODUCT.md/DESIGN.md ni documentar su mejora. Intentar asset con Higgsfield MCP registrado; si aprobación/OAuth impide generarlo, reportar dependencia y seguir UI, sin sustituir origen ni afirmar tarea completa de imagen. Sitio minimalista atractivo y profesional, estados privados/públicos coherentes, navegación funcional. SC005. Revisar360/1280 y teclado.
 
 ## Phase 7: Polish & cross-cutting
-- [ ] T007 Ejecutar verificaciones esenciales de quickstart.md y corregir regresiones dentro del alcance; añadir smoke del recorrido en tests/e2e con DB temporal y privacidad API. Ajustar CI/fixtures de catálogo afectados sin eliminar pruebas de seguridad ni fingir ejecuciones. Actualizar README.md, .project/context.md, .project/verification.md y .project/progress/impl_MVP-CIERRE.md con arranque, comandos/resultados reales y pendientes. FR008/010, SC001–005. Codex realiza revisión independiente y cierre, nunca Claude.
+- [x] T007 Ejecutar verificaciones esenciales de quickstart.md y corregir regresiones dentro del alcance; añadir smoke del recorrido en tests/e2e con DB temporal y privacidad API. Ajustar CI/fixtures de catálogo afectados sin eliminar pruebas de seguridad ni fingir ejecuciones. Actualizar README.md, .project/context.md, .project/verification.md y .project/progress/impl_MVP-CIERRE.md con arranque, comandos/resultados reales y pendientes. FR008/010, SC001–005. Codex realiza revisión independiente y cierre, nunca Claude.
 
 ## Dependencies & execution strategy
 T001→T002→T003→T004→T005→T006→T007. US1 independiente de persistencia nueva; US2API trasT003, US3API trasT004, recorrido completoT005. Solo un escritor: no paralelizar archivos ni iniciar tareas futuras en una invocación. La imagen puede seguir pendiente externamente sin frenar API/UI. Priorizar entrega rápida revisable; no ampliar funciones ni repetir suites completas por tarea.
 
 ## Parallel opportunities
 Solo investigación/lectura de fuentes independientes de código. No escritores paralelos; revisión Codex entre tareas. Los ejemplos de validación por historia están en quickstart.md.
+
+T007 consolidada por Codex solo como revisión/documentación; smoke/código ya construidos por Claude enT005/T006. Evidencia review_MVP-CIERRE.md; sin /speckit-implement por Codex.
