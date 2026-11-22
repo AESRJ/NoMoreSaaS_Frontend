@@ -85,7 +85,7 @@ describe('openDatabase', () => {
 describe('migrate', () => {
   it('crea el esquema y es idempotente sin perder datos', () => {
     const db = tempDb();
-    expect(migrate(db)).toEqual([1]);
+    expect(migrate(db)).toEqual([1, 2]);
     const userId = insertUser(db);
     insertProject(db, userId, { alternatives: ['alt-uno', 'beta-alt'] });
 
@@ -95,6 +95,7 @@ describe('migrate', () => {
     expect(count(db, 'project_selections')).toBe(2);
     expect(db.prepare('SELECT version, name FROM schema_migrations').all()).toEqual([
       { version: 1, name: 'identity' },
+      { version: 2, name: 'workflow' },
     ]);
   });
 
@@ -119,17 +120,44 @@ describe('migrate', () => {
     expect(JSON.parse(db.prepare('SELECT payload FROM sessions').get().payload).userId).toBe(userId);
   });
 
+  it('002 es aditiva sobre una DB existente en 001: conserva datos, es idempotente y borra en cascada', () => {
+    const path = join(dir, 'v1.sqlite');
+    let db = openDatabase(path);
+    expect(migrate(db, { migrations: loadMigrations().slice(0, 1) })).toEqual([1]);
+    const userId = insertUser(db, 'previo@example.com');
+    const projectId = insertProject(db, userId, { name: 'Previo', alternatives: ['otra'] });
+    db.close();
+
+    db = openDatabase(path);
+    open.push(db);
+    expect(migrate(db)).toEqual([2]);
+    expect(migrate(db)).toEqual([]);
+    expect(db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId).name).toBe('Previo');
+    expect(count(db, 'project_selections')).toBe(1);
+    db.prepare(
+      `INSERT INTO project_profiles VALUES (?, 2, 4, 100, 'linux', 'amd64', 'ssd', 1, 10, 'local', 0, 0, 1, ?)`,
+    ).run(projectId, NOW);
+    db.prepare("INSERT INTO project_progress VALUES (?, 'f', '[]', ?)").run(projectId, NOW);
+    expect(() =>
+      db.prepare(`INSERT INTO project_profiles VALUES (?, 0, 4, 100, 'linux', 'amd64', 'ssd', 1, 10, 'local', 0, 0, 1, ?)`).run(projectId, NOW),
+    ).toThrow(/CHECK|UNIQUE|PRIMARY/);
+    db.prepare('DELETE FROM project_selections WHERE project_id = ?').run(projectId);
+    db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
+    expect(count(db, 'project_profiles')).toBe(0);
+    expect(count(db, 'project_progress')).toBe(0);
+  });
+
   it('revierte por completo una migración fallida y no la registra', () => {
     const db = tempDb();
     const migrations = [
       ...loadMigrations(),
-      { version: 2, name: 'rota', sql: 'CREATE TABLE extra (x INTEGER) STRICT; INSERT INTO tabla_inexistente VALUES (1);' },
+      { version: 90, name: 'rota', sql: 'CREATE TABLE extra (x INTEGER) STRICT; INSERT INTO tabla_inexistente VALUES (1);' },
     ];
-    expect(() => migrate(db, { migrations })).toThrow(/Falló la migración 2-rota/);
+    expect(() => migrate(db, { migrations })).toThrow(/Falló la migración 90-rota/);
     expect(db.isTransaction).toBe(false);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'extra'").get()).toBeUndefined();
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }]);
-    // La 001 válida queda aplicada y usable; reintentar sin la rota no cambia nada.
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }, { version: 2 }]);
+    // Las migraciones válidas quedan aplicadas y usable; reintentar sin la rota no cambia nada.
     insertUser(db);
     expect(migrate(db)).toEqual([]);
     expect(count(db, 'users')).toBe(1);
@@ -337,7 +365,7 @@ describe('pnpm db:migrate (runMigrateCli)', () => {
     expect(out2.log).toHaveBeenCalledWith(expect.stringMatching(/sin migraciones pendientes/));
     const db = openDatabase(path);
     open.push(db);
-    expect(count(db, 'schema_migrations')).toBe(1);
+    expect(count(db, 'schema_migrations')).toBe(2);
   });
 
   it('termina con código 1 y mensaje claro ante ruta inválida, sin crear carpetas', () => {

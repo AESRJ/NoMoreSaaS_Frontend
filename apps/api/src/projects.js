@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { isValidId } from './catalog.js';
 import { ApiError, invalidId, notFound } from './errors.js';
+import { mountWorkflow } from './workflow.js';
 
 // Proyectos privados por cuenta. El propietario sale SIEMPRE de la sesión
 // (req.user de requireUser); toda consulta filtra por id AND owner_id y un
@@ -234,6 +235,9 @@ export function createProjects({ db, catalog, auth, now = Date.now }) {
     if (!changes) throw errors.notFound();
     res.status(204).end();
   });
+
+  // Flujo privado (004): perfil/workflow con las mismas guardas y propiedad.
+  mountWorkflow(router, { db, read, write, parseProjectId, notFound: errors.notFound, transaction, timestamp });
 
   // Un :id con codificación porcentual inválida (URIError de Express) es un ID inválido.
   router.use((error, _req, _res, next) => next(error instanceof URIError ? invalidId() : error));
