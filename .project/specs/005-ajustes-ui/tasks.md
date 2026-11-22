@@ -7,7 +7,7 @@ Entorno/stack existente, no reinstalar ni cambiar componentes globales. Ejecutar
 Dependencias: 004 cerrado. Un escritorporarchivo, no construcción de siguiente tarea en misma invocación.
 ## Phase3 Historias y entregas
 Meta: las historias de spec.md y criterios observables de quickstart.md.
-- [ ] T001 [US1] Actualizar SearchForm/CatalogPage y copy de AuthForm/AuthPage bajo apps/web/src; label/placeholder/ayuda/título/bajada segúnplan. Referencias ExplorerState.query de data-model.md; password sin modificar15–128/Unicode/hash. Adaptar nombres accesibles y textos en pruebas existentes. FR001/006. Verificar lint y tests catálogo/hero/auth afectados, sin nueva batería espejo.
+- [X] T001 [US1] Actualizar SearchForm/CatalogPage y copy de AuthForm/AuthPage bajo apps/web/src; label/placeholder/ayuda/título/bajada segúnplan. Referencias ExplorerState.query de data-model.md; password sin modificar15–128/Unicode/hash. Adaptar nombres accesibles y textos en pruebas existentes. FR001/006. Verificar lint y tests catálogo/hero/auth afectados, sin nueva batería espejo.
 
 - [ ] T002 [US2] Conservar data-model.md Service.id, data-model.md Service.name, data-model.md Service.description y construir explorador circular/árbol/comparativa integrada en apps/web/src y retirar interfaz global de comparación; conservar ficha y redirección interna /comparar. Metadatos oficiales deService y validación opcional en apps/api/data/catalog.json y src/catalog.js según data-model.md Service.officialUrl, Service.sources; estado según ExplorerState.activeServiceId, ExplorerState.activeAlternativeId, ExplorerState.query. Curar fuentes sin paridad/precios inventados. FR002/003/004/007. Verificar selección/cambio/teclado/reducedmotion y rutas antiguas con smoke enfocado.
 

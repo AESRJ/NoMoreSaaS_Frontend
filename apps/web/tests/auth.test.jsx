@@ -595,7 +595,7 @@ describe('formulario de registro', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Crear cuenta' })).toBeInTheDocument();
     expect(emailInput()).toHaveAttribute('autocomplete', 'email');
     expect(passwordInput()).toHaveAttribute('autocomplete', 'new-password');
-    expect(passwordInput()).toHaveAccessibleDescription(/entre 15 y 128 caracteres/i);
+    expect(passwordInput()).toHaveAccessibleDescription('Usa una frase de al menos 15 caracteres.');
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
   });
 

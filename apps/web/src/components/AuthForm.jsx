@@ -180,7 +180,7 @@ export function AuthForm({ mode }) {
         />
         {mode === 'register' && (
           <p id={ids.passwordHint} className="field__hint">
-            Entre {PASSWORD_MIN} y {PASSWORD_MAX} caracteres. Puedes usar espacios, acentos y emojis; se usa exactamente como la escribes, sin recortar espacios.
+            Usa una frase de al menos {PASSWORD_MIN} caracteres.
           </p>
         )}
         {fieldErrors.password && (

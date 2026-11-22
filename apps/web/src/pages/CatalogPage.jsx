@@ -68,11 +68,8 @@ export function CatalogPage() {
       <header className="hero">
         <HeroComputer />
         <div className="hero__text">
-          <h1>Alternativas autoalojables a servicios SaaS</h1>
-          <p className="hero__lead">
-            Encuentra alternativas autoalojadas para los servicios que usas, revisa sus capacidades, limitaciones, licencias y fuentes
-            oficiales, y compara hasta tres.
-          </p>
+          <h1>Tus servicios. Tus reglas.</h1>
+          <p className="hero__lead">Elige lo que usas. Encuentra su reemplazo.</p>
           <p className="page-meta">
             <span className="tag">Catálogo público</span>
             <span>Sin registro</span>
@@ -106,7 +103,7 @@ export function CatalogPage() {
                     </button>
                   }
                 >
-                  <p>{`Ningún SaaS ni alternativa coincide con «${query.trim()}». La búsqueda usa solo nombres.`}</p>
+                  <p>{`Ningún servicio ni alternativa coincide con «${query.trim()}». Prueba con el nombre del servicio que usas.`}</p>
                 </EmptyState>
               ) : null}
 

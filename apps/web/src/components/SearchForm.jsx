@@ -7,7 +7,7 @@ export function SearchForm({ value, onChange, inputRef }) {
   return (
     <form className="search" role="search" onSubmit={(event) => event.preventDefault()}>
       <label className="search__label" htmlFor={id}>
-        Buscar SaaS o alternativa
+        Encuentra una alternativa
       </label>
       <input
         ref={inputRef}
@@ -17,13 +17,13 @@ export function SearchForm({ value, onChange, inputRef }) {
         name="q"
         autoComplete="off"
         spellCheck="false"
-        placeholder="Por ejemplo: Google Drive o WireGuard"
+        placeholder="Por ejemplo, Google Drive"
         aria-describedby={hintId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
       <p id={hintId} className="search__hint">
-        Busca por el nombre del servicio que usas o de la alternativa; no distingue mayúsculas.
+        Escribe el nombre del servicio que quieres reemplazar.
       </p>
     </form>
   );

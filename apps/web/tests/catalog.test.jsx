@@ -13,7 +13,7 @@ describe('US1: catálogo público', () => {
   it('muestra carga y después los SaaS y alternativas sin pedir cuenta', async () => {
     renderApp('/');
     expect(screen.getByText(/cargando el catálogo/i).closest('[role="status"]')).not.toBeNull();
-    expect(await screen.findByRole('heading', { level: 1, name: /alternativas autoalojables/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tus servicios. Tus reglas.' })).toBeInTheDocument();
     const services = servicesSection();
     for (const name of ['Drive Nube', 'Fotos Nube', 'Forja Nube']) {
       expect(within(services).getByRole('link', { name })).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe('US1: catálogo público', () => {
 
   it('busca un SaaS ignorando mayúsculas y espacios y refleja q en la URL', async () => {
     const { user, fetcher } = renderApp('/');
-    const input = await screen.findByRole('searchbox', { name: /buscar saas o alternativa/i });
+    const input = await screen.findByRole('searchbox', { name: 'Encuentra una alternativa' });
     await user.type(input, '  forja NUBE ');
     const services = servicesSection();
     expect(within(services).getByRole('heading', { name: 'Forja Nube' })).toBeInTheDocument();

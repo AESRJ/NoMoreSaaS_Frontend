@@ -54,3 +54,6 @@ Codex formaliza005–008 con SpecKit templates/setup-plan/setup-tasks/prerequisi
 
 ## 2026-11-22 — Verificación del coordinador de reanudación
 Codex comprobó sintaxis PowerShell y compilación Python del arnés, init maestro y handoff005 (0/4). Codex CLI nativo respondió HARNESS_OK con autenticación local; no se cambió cuenta/modelo. La política local bloquea invocar directamente init.ps1: la verificación se ejecutó mediante una política limitada al proceso, sin cambiar configuración persistente. Las advertencias de PATH no son ausencia de herramientas: los runners usan rutas explícitas. Dos entradas anteriores de planificación quedaron repetidas por reejecutar el generador; se conservan por bitácora append-only. Sin código de producto modificado. La cuota real y el registro del horario siguen siendo condiciones independientes.
+
+## 2026-11-22 — T001 005-ajustes-ui (Claude)
+Copy de portada/buscador/ayuda de contraseña actualizado según plan; pruebas existentes adaptadas. pnpm lint OK; vitest hero/catalog/auth/accessible-names 73/73 OK. e2e/smoke pendientes de T004. Detalle en impl_UX-REVISION.md. Pendiente revisión Codex; sin git add/commit.

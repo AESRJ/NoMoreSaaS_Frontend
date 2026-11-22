@@ -56,9 +56,9 @@ test.describe('API real a través del proxy', () => {
 test.describe('US1–US3 con el seed real', () => {
   test('recorrido solo con teclado: búsqueda → ficha → selección → comparación', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: /alternativas autoalojables/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Tus servicios. Tus reglas.' })).toBeVisible();
 
-    const search = page.getByRole('searchbox', { name: /buscar saas o alternativa/i });
+    const search = page.getByRole('searchbox', { name: 'Encuentra una alternativa' });
     await tabTo(page, search);
     await page.keyboard.type('  SLACK ');
     await expect(page).toHaveURL(/q=/);
@@ -177,7 +177,7 @@ test.describe('US1–US3 con el seed real', () => {
     await page.goto('/ruta/desconocida');
     await expect(page.getByRole('heading', { level: 1, name: /página no encontrada/i })).toBeVisible();
     await page.getByRole('link', { name: /volver al catálogo/i }).click();
-    await expect(page.getByRole('heading', { level: 1, name: /alternativas autoalojables/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Tus servicios. Tus reglas.' })).toBeVisible();
   });
 });
 

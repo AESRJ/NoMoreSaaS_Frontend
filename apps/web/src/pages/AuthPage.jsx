@@ -14,7 +14,7 @@ const COPY = {
   },
   register: {
     title: 'Crear cuenta',
-    lead: 'Crea una cuenta con tu correo y una contraseña. El catálogo sigue siendo público y no requiere cuenta.',
+    lead: 'Guarda tus proyectos con un correo y una contraseña. El catálogo es público y no necesita cuenta.',
     alternate: '¿Ya tienes cuenta?',
     alternateLink: 'Entrar',
     alternatePath: '/entrar',

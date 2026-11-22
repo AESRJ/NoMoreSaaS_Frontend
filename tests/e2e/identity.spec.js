@@ -68,7 +68,7 @@ test.describe('cuentas y proyectos (API real)', () => {
 
     // Catálogo público previo, sin sesión.
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: /alternativas autoalojables/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Tus servicios. Tus reglas.' })).toBeVisible();
     await expect(page.locator('.site-header').getByRole('link', { name: 'Entrar' })).toBeVisible();
     await expect(page.locator('a[href^="/proyectos"]')).toHaveCount(0);
 

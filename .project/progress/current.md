@@ -1,2 +1,3 @@
 # Estado actual
-005-ajustes-ui ready T001–T004, únicaactiva, espera cuotaClaude (últimoaviso restablece14:20).006Google5tareas,007equipo/seguridad4tareas y008Railway3tareas planificadas/analizadas conhandoffdraft, no ejecutarhastaactivarCodex segúncola. Fuente .project/execution-queue.json. Codex revisa/commitea cada tareaaprox20min, Claude construye.004closed, no reejecutar. Railway confirmado porusuario, accesooperativo noverificado; OAuthGooglependienteconfiguración. No publicartrabajoincompleto ni comprarplan. Preview5573/API3301 yDBrealpreservados.
+
+005 única activa/ready: T001 aceptada por Codex; commit en preparación. T002–T004 pendientes. Claude construye, Codex revisa/commitea cada20min. 006–008 draft. Google real pendiente cliente/variables; Railway acceso/cuenta/costo sin verificar, sin publicación. init maestro/código PASS; NotebookLM consultado y contrastado con Git. Preview5573/API3301/datos preservados. Evidencia review_UX-REVISION.md.

@@ -34,7 +34,7 @@ test('portada: computadora central renderizada, paleta exacta y sin desbordamien
   expect(await image.evaluate((img) => img.naturalHeight)).toBe(880);
   // Sin selección no hay banda de comparación que tape el buscador.
   await expect(page.getByRole('complementary', { name: 'Selección para comparar' })).toHaveCount(0);
-  await expect(page.getByRole('searchbox', { name: /buscar saas o alternativa/i })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Encuentra una alternativa' })).toBeVisible();
   // Primera vista: cabecera arriba, computadora y título visibles.
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.locator('.site-header')).toBeInViewport();
@@ -66,7 +66,7 @@ test('portada: computadora central renderizada, paleta exacta y sin desbordamien
   });
 
   // CTA lima con texto negro.
-  await expect(page.getByRole('searchbox', { name: /buscar saas o alternativa/i })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Encuentra una alternativa' })).toBeVisible();
   await page.goto('/?q=inexistente');
   const reset = page.getByRole('button', { name: /restablecer búsqueda/i });
   expect(await reset.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color])).toEqual([
