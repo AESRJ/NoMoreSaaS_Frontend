@@ -1,10 +1,12 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { validateCatalog } from '../src/catalog.js';
+import { migrate, openDatabase } from '../src/db.js';
 import { startServer } from '../src/server.js';
 import { validCatalog } from './fixtures.js';
 
@@ -124,12 +126,58 @@ describe('arranque del servidor', () => {
     await expect(startServer({ catalogPath: file, port: 0 })).rejects.toThrow(/Catálogo inválido/);
   });
 
+  // Desde T002 el servidor real exige configuración de identidad y DB migrada.
+  // Solo DB temporales: nunca la ruta por defecto del desarrollador.
+  const SECRET = randomBytes(32).toString('hex');
+  const envFor = (dir, extra = {}) => ({
+    DATABASE_PATH: join(dir, 'api.sqlite'),
+    SESSION_SECRET: SECRET,
+    APP_ORIGIN: 'http://127.0.0.1:5573',
+    ...extra,
+  });
+  async function migratedDir() {
+    const dir = await mkdtemp(join(tmpdir(), 'api-server-'));
+    const db = openDatabase(join(dir, 'api.sqlite'));
+    migrate(db);
+    db.close();
+    return dir;
+  }
+
   it('arranca con el seed real enlazado a 127.0.0.1 por defecto', async () => {
-    const server = await startServer({ port: 0 });
+    const dir = await migratedDir();
+    const server = await startServer({ port: 0, env: envFor(dir) });
     try {
       expect(server.address().address).toBe('127.0.0.1');
+      const res = await request(server).get('/api/auth/session');
+      expect(res.status).toBe(200);
+      expect(res.body.user).toBeNull();
+      expect((await request(server).get('/api/catalog')).status).toBe(200);
     } finally {
       await new Promise((resolve) => server.close(resolve));
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('no arranca sin configuración válida ni sustituye la DB por memoria', async () => {
+    const dir = await migratedDir();
+    try {
+      await expect(startServer({ port: 0, env: envFor(dir, { SESSION_SECRET: '' }) })).rejects.toThrow(/SESSION_SECRET/);
+      await expect(startServer({ port: 0, env: envFor(dir, { APP_ORIGIN: 'http://ejemplo.com' }) })).rejects.toThrow(/APP_ORIGIN/);
+      await expect(startServer({ port: 0, env: envFor(dir, { DATABASE_PATH: ':memory:' }) })).rejects.toThrow(/DATABASE_PATH/);
+      await expect(startServer({ port: 0, env: envFor(dir, { DATABASE_PATH: join(dir, 'falta', 'x.sqlite') }) })).rejects.toThrow(
+        /No se pudo abrir/,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('no arranca con una DB sin migrar', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'api-server-'));
+    try {
+      await expect(startServer({ port: 0, env: envFor(dir) })).rejects.toThrow(/pnpm db:migrate/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
     }
   });
 });

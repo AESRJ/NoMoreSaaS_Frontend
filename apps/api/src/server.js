@@ -1,26 +1,70 @@
 import { pathToFileURL } from 'node:url';
-import { DEFAULT_CATALOG_PATH, loadCatalog } from './catalog.js';
 import { createApp } from './app.js';
+import { createAuth } from './auth.js';
+import { DEFAULT_CATALOG_PATH, loadCatalog } from './catalog.js';
+import { loadConfig } from './config.js';
+import { DatabaseError, loadMigrations, openDatabase } from './db.js';
 
 /**
- * Carga y valida el dataset y después escucha. Un dataset inválido rechaza la
- * promesa antes de abrir el puerto, así nunca se sirven datos parciales.
+ * Comprueba que la DB tiene exactamente las migraciones de este código. El
+ * servidor no migra por su cuenta: `pnpm db:migrate` es un paso explícito.
+ */
+export function assertMigrated(db, migrations = loadMigrations()) {
+  const table = db.prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").get();
+  const applied = table ? db.prepare('SELECT version FROM schema_migrations').all().map((r) => r.version) : [];
+  const known = new Set(migrations.map((m) => m.version));
+  if (applied.some((v) => !known.has(v))) {
+    throw new DatabaseError('La base tiene migraciones desconocidas para este código; no se arranca.');
+  }
+  if (migrations.some((m) => !applied.includes(m.version))) {
+    throw new DatabaseError('La base de datos no está migrada; ejecuta pnpm db:migrate.');
+  }
+}
+
+/**
+ * Carga y valida el dataset, la configuración y la DB migrada; después
+ * escucha. Cualquier fallo rechaza la promesa antes de abrir el puerto: nunca
+ * se sirven datos parciales ni se sustituye la DB por memoria.
  */
 export async function startServer({
-  host = process.env.API_HOST || '127.0.0.1',
-  port = Number(process.env.API_PORT || 3001),
-  catalogPath = process.env.CATALOG_PATH || DEFAULT_CATALOG_PATH,
+  env = process.env,
+  host = env.API_HOST || '127.0.0.1',
+  port = Number(env.API_PORT || 3001),
+  catalogPath = env.CATALOG_PATH || DEFAULT_CATALOG_PATH,
   logger = console,
+  now,
 } = {}) {
   const catalog = await loadCatalog(catalogPath, { requireSeedCoverage: catalogPath === DEFAULT_CATALOG_PATH });
-  const app = createApp({ catalog, logger });
+  const config = loadConfig(env);
+  const db = openDatabase(config.databasePath);
+  let auth;
+  try {
+    assertMigrated(db);
+    auth = createAuth({
+      db,
+      sessionSecret: config.sessionSecret,
+      appOrigin: config.appOrigin,
+      cookieSecure: config.cookieSecure,
+      ...(now ? { now } : {}),
+    });
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  const app = createApp({ catalog, logger, auth });
   return new Promise((resolve, reject) => {
     const server = app.listen(port, host, (error) => {
       if (error) {
+        auth.close();
+        if (db.isOpen) db.close();
         reject(error);
         return;
       }
       resolve(server);
+    });
+    server.on('close', () => {
+      auth.close();
+      if (db.isOpen) db.close();
     });
   });
 }

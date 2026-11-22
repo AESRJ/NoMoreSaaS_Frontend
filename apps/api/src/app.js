@@ -4,17 +4,21 @@ import { findAlternative, isValidId } from './catalog.js';
 import { createErrorHandler, invalidId, notFound, notFoundHandler } from './errors.js';
 
 /**
- * Crea la aplicación Express de solo lectura a partir de un catálogo ya validado.
- * No abre puertos: `server.js` se encarga de `listen`.
- * @param {{ catalog: object, logger?: Pick<Console, 'error'> }} options
+ * Crea la aplicación Express a partir de un catálogo ya validado. El catálogo
+ * es público y no usa sesión; `auth` (de createAuth) es opcional y, si se
+ * inyecta, monta /api/auth. No abre puertos: `server.js` se encarga de `listen`.
+ * @param {{ catalog: object, logger?: Pick<Console, 'error'>, auth?: { router: import('express').Router } }} options
  */
-export function createApp({ catalog, logger = console }) {
+export function createApp({ catalog, logger = console, auth }) {
   if (!catalog) throw new Error('createApp requiere un catálogo validado');
 
   const app = express();
   app.disable('x-powered-by');
   app.set('etag', 'strong');
+  app.set('trust proxy', false);
   app.use(helmet());
+
+  if (auth) app.use('/api/auth', auth.router);
 
   const api = express.Router();
 
