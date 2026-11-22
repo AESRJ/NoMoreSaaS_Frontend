@@ -63,7 +63,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   const info = page.locator('.flow-warning--info').first();
   await expect(info).toContainText('Información');
   expect(await info.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color])).toEqual(['rgb(28, 28, 28)', 'rgb(238, 238, 238)']);
-  // Ruta privada: sin banda de comparación.
+  // Ruta privada: sin banda de comparación (retirada en 005).
   await expect(page.getByRole('complementary', { name: 'Selección para comparar' })).toHaveCount(0);
   await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-evaluacion-${page.viewportSize().width}.png`, fullPage: true });
 

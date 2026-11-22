@@ -32,7 +32,7 @@ test('portada: computadora central renderizada, paleta exacta y sin desbordamien
   await expect(image).toBeVisible();
   await expect.poll(() => image.evaluate((img) => img.complete && img.naturalWidth)).toBe(1168);
   expect(await image.evaluate((img) => img.naturalHeight)).toBe(880);
-  // Sin selección no hay banda de comparación que tape el buscador.
+  // La banda de comparación global se retiró (005): nada tapa el buscador.
   await expect(page.getByRole('complementary', { name: 'Selección para comparar' })).toHaveCount(0);
   await expect(page.getByRole('searchbox', { name: 'Encuentra una alternativa' })).toBeVisible();
   // Primera vista: cabecera arriba, computadora y título visibles.
@@ -77,15 +77,21 @@ test('portada: computadora central renderizada, paleta exacta y sin desbordamien
   await page.goto('/');
   await expect(image).toBeVisible();
 
-  // Selección pública: aparece con 2, conserva acciones y desaparece al limpiar.
-  const bar = page.getByRole('complementary', { name: 'Selección para comparar' });
-  await page.getByRole('button', { name: 'Añadir Nextcloud a la comparación' }).click();
-  await page.getByRole('button', { name: 'Añadir Outline a la comparación' }).click();
-  await expect(page.getByTestId('selection-count')).toHaveText('2 de 3');
-  await expect(bar.getByRole('link', { name: /ver comparación/i })).toBeVisible();
-  await bar.getByRole('button', { name: /limpiar selección/i }).click();
-  await expect(bar).toHaveCount(0);
-  await expect(page.locator('main')).toBeFocused();
+  // Explorador: el círculo activo usa la lima con texto negro; abrir y cerrar no
+  // deja bandas ni comparaciones globales.
+  const drive = page.getByRole('button', { name: /^Google Drive \d+ alternativas?$/ });
+  await drive.click();
+  await expect(drive).toHaveAttribute('aria-expanded', 'true');
+  // Aserciones reintentables: el círculo tiene transición de color; se espera
+  // al estado final exacto, sin tolerancia ni pausas fijas.
+  const mark = drive.locator('.orbit__mark');
+  await expect(mark).toHaveCSS('background-color', 'rgb(198, 253, 14)');
+  await expect(mark).toHaveCSS('color', 'rgb(0, 0, 0)');
+  await page.getByRole('region', { name: 'Alternativas a Google Drive' }).getByRole('button', { name: 'Nextcloud' }).click();
+  await expect(page.getByRole('region', { name: 'Google Drive frente a Nextcloud' })).toBeVisible();
+  await drive.click();
+  await expect(page.getByRole('region', { name: /frente a/ })).toHaveCount(0);
+  await expect(page.getByRole('complementary', { name: 'Selección para comparar' })).toHaveCount(0);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBe(0);

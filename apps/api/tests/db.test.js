@@ -252,7 +252,17 @@ describe('restricciones del esquema', () => {
   it('limita a 100 proyectos por cuenta, independiente entre cuentas', () => {
     const a = insertUser(db, 'a@example.com');
     const b = insertUser(db, 'b@example.com');
-    for (let i = 0; i < 100; i += 1) insertProject(db, a, { alternatives: [] });
+    // Preparación: los 100 proyectos en una sola transacción (un commit en disco
+    // en lugar de 100). El trigger de cuota se evalúa igual en cada INSERT.
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      for (let i = 0; i < 100; i += 1) insertProject(db, a, { alternatives: [] });
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+    // El intento 101, ya fuera de la preparación, sigue rechazado por la DB.
     expect(() => insertProject(db, a, { alternatives: [] })).toThrow(/PROJECT_QUOTA_EXCEEDED/);
     expect(db.prepare('SELECT count(*) AS n FROM projects WHERE owner_id = ?').get(a).n).toBe(100);
     insertProject(db, b);

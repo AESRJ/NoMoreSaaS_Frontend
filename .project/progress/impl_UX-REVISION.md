@@ -52,3 +52,31 @@ Comandos y resultados:
 - `pnpm exec playwright test tests/e2e/identity.spec.js tests/e2e/workflow.spec.js` (3501/5773 heredados, DB temporal) → 10/10 en 360 y 1280: crear con dos servicios, recargar, editar quitando/añadiendo, 403/red/401 conservan valores, dos identidades aisladas, 401 sin sesión, flujo completo de plan.
 
 Límites: build no repetido (sin cambios de configuración; se ejecutará al integrar en T004). catalog.spec.js y portada.spec.js siguen pendientes de T004.
+
+## T004 — 2026-11-22 (Claude, pendiente de revisión Codex; no cierra la feature)
+Integración y regresiones:
+- tests/e2e/catalog.spec.js: recorrido global obsoleto (añadir/banda/tabla /comparar) sustituido conservando su intención: teclado búsqueda → círculo → alternativa → comparativa → ficha; búsqueda por alternativa; cada servicio inicial con fuente oficial; /comparar redirige sin menú, botones ni tabla; sin resultados/restablecer; estados simulados; responsive 360/1280 con capturas. Contrato API: metadatos oficiales de Service.
+- tests/e2e/portada.spec.js: bloque de banda de selección sustituido por abrir/cerrar el explorador y color lima/negro del círculo activo. tests/e2e/workflow.spec.js: comentario.
+- README.md (incremento 005, flujo y límites) y .project/context.md (estado 005) actualizados brevemente.
+- Sin cambios de producto adicionales: no se encontraron regresiones en src.
+
+Comandos y resultados:
+- `pnpm lint` → sin errores. `pnpm build` → OK.
+- `pnpm test` → web 164/164; API 262/263: falla por timeout (5 s) `apps/api/tests/db.test.js` «limita a 100 proyectos por cuenta» al correr en paralelo con la web (6,5 s); aislado `vitest run tests/db.test.js` → 28/28. Archivo fuera de allowed_paths de 005 y no tocado; se informa a Codex.
+- `pnpm test:e2e` (3501/5773 heredados, DB temporal) → 48/48 en 360 y 1280 (catálogo, explorador, portada, identidad, flujo). Capturas en .local/screenshots/.
+- `.\init.cmd` → OK (handoff 005 ready).
+
+Límites: sin despliegue, Google ni Railway. El estado abierto del explorador no se refleja en la URL (solo ?q=). Revisión y cierre de 005 corresponden a Codex.
+
+### T004 — corrección solicitada por Codex (2026-11-22)
+- apps/api/tests/db.test.js («limita a 100 proyectos por cuenta»): la preparación de los 100 proyectos va en una transacción `BEGIN IMMEDIATE`/`COMMIT` (ROLLBACK y relanzar si falla). Se mantienen el intento 101 fuera de la transacción (PROJECT_QUOTA_EXCEEDED), el recuento 100 y la segunda cuenta; sin cambios de aserciones, límites, timeout, configuración de DB ni producto.
+- `vitest run tests/db.test.js -t "limita a 100"` → PASS en 73 ms. `vitest run tests/db.test.js` → 28/28.
+- `pnpm test` integrado → API 263/263, web 164/164. `pnpm lint` → sin errores.
+- e2e no repetido (cambio solo en fixtures de prueba; última ejecución 48/48).
+
+### T004 — segunda corrección solicitada por Codex (2026-11-22)
+- Fallo informado por Codex en su ejecución completa: 47/48, `tests/e2e/portada.spec.js:85` en movil-360; la lectura puntual con `evaluate` tras `drive.click` captó la transición de color en curso (rgb(197, 252, 14) frente a rgb(198, 253, 14)).
+- Corrección: la comprobación usa aserciones reintentables `toHaveCSS('background-color', 'rgb(198, 253, 14)')` y `toHaveCSS('color', 'rgb(0, 0, 0)')`. RGB exacto, sin pausas fijas ni tolerancias, sin cambios de paleta, animación ni producto.
+- `pnpm exec playwright test tests/e2e/portada.spec.js` → 4/4 (360 y 1280).
+- `pnpm test:e2e` (3501/5773 heredados, DB temporal) → 48/48.
+- Unit/lint/build no repetidos (solo cambió una aserción e2e). Checkbox T004 estaba en [ ] tras reapertura; marcado tras estos checks.

@@ -10,14 +10,15 @@ Repositorio de codigo separado de [la planificacion y arnes maestro](https://git
 
 ## Incrementos
 
-- Catalogo publico de alternativas autoalojables (5 SaaS, 5 alternativas curadas con fuentes oficiales y fecha), busqueda, fichas con fuentes y comparacion de 2 a 3 alternativas. Sigue sin requerir cuenta.
+- Catalogo publico de alternativas autoalojables (5 SaaS, 5 alternativas curadas con fuentes oficiales y fecha), busqueda y fichas con fuentes. Sigue sin requerir cuenta.
+- Exploracion por servicio (entrega 005): se parte del servicio que se usa; cada servicio es un circulo que despliega el arbol de sus alternativas y, al elegir una, la comparativa servicio/alternativa en la misma pagina (con fuentes oficiales y datos desconocidos marcados como tales). La comparacion global y `/comparar` se retiraron; esa ruta redirige al catalogo. Crear/editar proyecto tambien parte de buscar el servicio y muestra chips «servicio → alternativa».
 - Cuentas y proyectos privados (entrega 003): registro, entrada y salida con correo y contrasena (Argon2id, sesion de servidor persistente en SQLite, cookie HttpOnly/SameSite=Lax, CSRF sincronizador). Cada cuenta crea, edita y borra (con confirmacion) hasta 100 proyectos con nombre, descripcion y 1-10 alternativas del catalogo; nadie mas puede verlos. Sin verificacion o recuperacion de correo, OAuth, borrado de cuenta, instalacion de servicios ni despliegue.
 
 ## Flujo final disponible (004)
 
 Catálogo: Nextcloud, Immich, Matrix/Synapse, WireGuard y Outline wiki. Se retiraron GitHub/Gitea/Forgejo de nuevas selecciones; los proyectos antiguos conservan sus referencias. Outline es código disponible bajo BSL1.1, no open source.
 
-1. Explorar fichas/fuentes y comparar alternativas; crear cuenta o entrar.
+1. Buscar el servicio que se usa, abrir sus alternativas y compararlas en la portada; crear cuenta o entrar.
 2. Crear proyecto y abrir **Equipo, evaluación y plan**.
 3. Guardar hardware y carga prevista; revisar estimación, ecuaciones, fuentes y condiciones pendientes.
 4. Abrir Plan, copiar prompts por etapa y marcar avances; recargar conserva datos.
@@ -53,7 +54,8 @@ pnpm test:e2e                    # Playwright: API (DB y secreto temporales) y w
 
 ## Limites conocidos
 
-- La seleccion de comparacion vive en memoria y se reinicia al recargar (por diseno).
+- El servicio y la alternativa abiertos en la portada no se guardan en la URL; solo la busqueda (`?q=`) es compartible.
+- La comparativa no publica precios ni paridad de funciones: lo que el catalogo no documenta del servicio SaaS se muestra como desconocido.
 - No hay hosting de produccion: el proxy `/api` solo existe en el servidor de desarrollo de Vite. Antes de produccion faltan HTTPS, verificacion/recuperacion de correo, borrado de cuenta y operacion.
 - SQLite local de un solo proceso; los limitadores de intentos viven en memoria y se reinician con la API.
 - Accesibilidad comprobada en recorridos de teclado y nombres accesibles; no es una auditoria WCAG completa.

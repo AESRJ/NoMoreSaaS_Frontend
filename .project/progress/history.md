@@ -63,3 +63,12 @@ Explorador circular/árbol/comparativa integrada en /, interfaz global de compar
 
 ## 2026-11-22 — T003 005-ajustes-ui (Claude)
 ServiceReplacementPicker en crear/editar proyecto: búsqueda por servicio, chips servicio → alternativa, sin duplicados, retiradas visibles; contrato003 intacto. lint OK, web 164/164, e2e identity+workflow 10/10 (360/1280, 3501/5773). catalog/portada e2e pendientes de T004. Sin git add/commit.
+
+## 2026-11-22 — T004 005-ajustes-ui (Claude)
+e2e catálogo/portada adaptados al explorador conservando búsqueda/teclado/privacidad; README/contexto breves. lint OK, build OK, web 164/164, API 262/263 (timeout db.test.js en paralelo, fuera de alcance; aislado 28/28), e2e 48/48 a 360/1280 en 3501/5773, init OK. Pendiente revisión/cierre por Codex; sin git add/commit.
+
+## 2026-11-22 — T004 corrección Codex (Claude)
+db.test.js «limita a 100 proyectos»: preparación en una transacción, aserciones/intento 101/segunda cuenta intactos. Prueba 73 ms; archivo 28/28; pnpm test API 263/263 y web 164/164; lint OK. e2e no repetido (solo fixtures). Sin git add/commit.
+
+## 2026-11-22 — T004 segunda corrección Codex (Claude)
+portada.spec.js: color del círculo activo con toHaveCSS reintentable (RGB exacto; antes falló 1/48 en 360 por transición en curso). portada 4/4; e2e completo 48/48 en 3501/5773. T004 marcada tras checks. Sin git add/commit.
