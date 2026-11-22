@@ -18,3 +18,5 @@ Final: Claudeexit0/is_error=false en ambasreparaciones; e2e48/48PASS en360/1280.
 
 ## Convergencia 005 — alcance satisfecho
 Speckit-converge: prerequisitesPASS, sinextensions/hook. Artefactos canónicos y código presente enáreasnombradas revisados:7FR/3SC/4historias,8decisionesdeplan,5principiosconstitucionales. Cero missing/partial/contradicts/unrequested dentro005; no tareas añadidas ytasks.md sinmodificaciónporconvergencia. Tabla: FR001buscador/catalog/explorer; FR002–004ServiceExplorer/App/Layout/fichas; FR005ServiceReplacementPicker/ProjectForm/identity; FR006Search/Auth/hero; FR007CSS/PNG/portada360/1280. T001–T004aceptadas, sinhallazgosabiertos. Código revisado; commitT003esperando~15:05 yT004snapshotdespués, sin afirmarSHAnofijado. Activación006solo trasprepararT004ysinmezclaríndice.
+
+Commits verificados posteriormente: T0032adea045 y T004ddd3bac9dfb4490fb3ffa81babf9e652cb5ee41f (15:24:58). AESRJ autor/committer e índice libre comprobados. Los cuatro commits005 son reales; sin push/publicación.

@@ -26,9 +26,18 @@ const NOW = '2026-11-21T10:00:00.000Z';
 const HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA';
 
 function insertUser(db, email = 'ana@example.com', id = randomUUID()) {
-  db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)').run(id, email, HASH, NOW);
+  db.prepare('INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)').run(id, email, NOW);
+  db.prepare('INSERT INTO password_credentials (user_id, password_hash) VALUES (?, ?)').run(id, HASH);
   return id;
 }
+
+// Esquema previo a 003: el hash vivía en users.password_hash.
+function insertLegacyUser(db, email, hash = HASH, id = randomUUID()) {
+  db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)').run(id, email, hash, NOW);
+  return id;
+}
+
+const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 
 function insertProject(db, ownerId, { id = randomUUID(), name = 'Proyecto', alternatives = ['alt-uno'] } = {}) {
   db.prepare(
@@ -85,7 +94,7 @@ describe('openDatabase', () => {
 describe('migrate', () => {
   it('crea el esquema y es idempotente sin perder datos', () => {
     const db = tempDb();
-    expect(migrate(db)).toEqual([1, 2]);
+    expect(migrate(db)).toEqual([1, 2, 3]);
     const userId = insertUser(db);
     insertProject(db, userId, { alternatives: ['alt-uno', 'beta-alt'] });
 
@@ -96,6 +105,7 @@ describe('migrate', () => {
     expect(db.prepare('SELECT version, name FROM schema_migrations').all()).toEqual([
       { version: 1, name: 'identity' },
       { version: 2, name: 'workflow' },
+      { version: 3, name: 'google-identity' },
     ]);
   });
 
@@ -124,13 +134,13 @@ describe('migrate', () => {
     const path = join(dir, 'v1.sqlite');
     let db = openDatabase(path);
     expect(migrate(db, { migrations: loadMigrations().slice(0, 1) })).toEqual([1]);
-    const userId = insertUser(db, 'previo@example.com');
+    const userId = insertLegacyUser(db, 'previo@example.com');
     const projectId = insertProject(db, userId, { name: 'Previo', alternatives: ['otra'] });
     db.close();
 
     db = openDatabase(path);
     open.push(db);
-    expect(migrate(db)).toEqual([2]);
+    expect(migrate(db)).toEqual([2, 3]);
     expect(migrate(db)).toEqual([]);
     expect(db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId).name).toBe('Previo');
     expect(count(db, 'project_selections')).toBe(1);
@@ -156,7 +166,7 @@ describe('migrate', () => {
     expect(() => migrate(db, { migrations })).toThrow(/Falló la migración 90-rota/);
     expect(db.isTransaction).toBe(false);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'extra'").get()).toBeUndefined();
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }, { version: 2 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
     // Las migraciones válidas quedan aplicadas y usable; reintentar sin la rota no cambia nada.
     insertUser(db);
     expect(migrate(db)).toEqual([]);
@@ -180,6 +190,158 @@ describe('migrate', () => {
   });
 });
 
+describe('migración 003 (credenciales, identidades, intentos OIDC)', () => {
+  const HASH_B = '$argon2id$v=19$m=19456,t=2,p=1$b3RyYXNhbHRvdHJhc2FsdA$b3Ryb2hhc2g';
+  const SID_HASH = 'c'.repeat(64);
+  const h = (ch) => ch.repeat(64);
+  const VERIFIER = 'v'.repeat(43);
+
+  // DB real en 002 con dos cuentas, proyectos, perfil, progreso y sesión.
+  function seed002(path) {
+    const db = openDatabase(path);
+    expect(migrate(db, { migrations: loadMigrations().slice(0, 2) })).toEqual([1, 2]);
+    const a = insertLegacyUser(db, 'ana@example.com', HASH);
+    const b = insertLegacyUser(db, 'beto@example.com', HASH_B);
+    const pa = insertProject(db, a, { name: 'De Ana', alternatives: ['alt-uno', 'otra'] });
+    const pb = insertProject(db, b, { name: 'De Beto' });
+    db.prepare(
+      `INSERT INTO project_profiles VALUES (?, 2, 4, 100, 'linux', 'amd64', 'ssd', 1, 10, 'local', 0, 0, 1, ?)`,
+    ).run(pa, NOW);
+    db.prepare("INSERT INTO project_progress VALUES (?, 'f', '[\"s1\"]', ?)").run(pa, NOW);
+    db.prepare('INSERT INTO sessions (id_hash, payload, expires_at) VALUES (?, ?, ?)').run(
+      SID_HASH, JSON.stringify({ csrfToken: 't', userId: a }), Date.parse(NOW) + 1000,
+    );
+    const before = {
+      users: db.prepare('SELECT id, email, created_at FROM users ORDER BY id').all(),
+      hashes: db.prepare('SELECT id AS user_id, password_hash FROM users ORDER BY id').all(),
+      projects: db.prepare('SELECT * FROM projects ORDER BY id').all(),
+      selections: db.prepare('SELECT * FROM project_selections ORDER BY project_id, position').all(),
+      profiles: db.prepare('SELECT * FROM project_profiles').all(),
+      progress: db.prepare('SELECT * FROM project_progress').all(),
+      sessions: db.prepare('SELECT * FROM sessions').all(),
+    };
+    db.close();
+    return { a, b, pa, pb, before };
+  }
+
+  function insertAttempt(db, { state = h('1'), session = SID_HASH, purpose = 'login', userId = null, returnTo = 'projects', verifier = VERIFIER } = {}) {
+    db.prepare(
+      `INSERT INTO oauth_attempts (state_hash, session_hash, nonce_hash, verifier, purpose, expected_user_id, expires_at, return_to)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(state, session, h('2'), verifier, purpose, userId, Date.parse(NOW) + 5 * 60 * 1000, returnTo);
+  }
+
+  it('desde 002 copia hashes exactos, retira la columna y conserva usuarios, proyectos, sesiones y FK', () => {
+    const path = join(dir, 'v2.sqlite');
+    const { a, b, pa, before } = seed002(path);
+    const db = openDatabase(path);
+    open.push(db);
+    expect(migrate(db)).toEqual([3]);
+    expect(migrate(db)).toEqual([]);
+
+    expect(columns(db, 'users')).toEqual(['id', 'email', 'created_at']);
+    expect(db.prepare('SELECT user_id, password_hash FROM password_credentials ORDER BY user_id').all()).toEqual(before.hashes);
+    expect(db.prepare('SELECT password_hash FROM password_credentials WHERE user_id = ?').get(b).password_hash).toBe(HASH_B);
+    expect(db.prepare('SELECT id, email, created_at FROM users ORDER BY id').all()).toEqual(before.users);
+    expect(db.prepare('SELECT * FROM projects ORDER BY id').all()).toEqual(before.projects);
+    expect(db.prepare('SELECT * FROM project_selections ORDER BY project_id, position').all()).toEqual(before.selections);
+    expect(db.prepare('SELECT * FROM project_profiles').all()).toEqual(before.profiles);
+    expect(db.prepare('SELECT * FROM project_progress').all()).toEqual(before.progress);
+    expect(db.prepare('SELECT * FROM sessions').all()).toEqual(before.sessions);
+    expect(count(db, 'external_identities')).toBe(0);
+    expect(count(db, 'oauth_attempts')).toBe(0);
+
+    expect(db.prepare('PRAGMA integrity_check').get().integrity_check).toBe('ok');
+    expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    // Restricciones previas siguen activas tras el DROP COLUMN.
+    expect(() => insertUser(db, 'ana@example.com')).toThrow(/UNIQUE constraint failed: users\.email/);
+    expect(() => insertProject(db, randomUUID())).toThrow(/FOREIGN KEY/);
+    expect(() => db.prepare('DELETE FROM users WHERE id = ?').run(a)).toThrow(/FOREIGN KEY/);
+    expect(db.prepare('SELECT name FROM projects WHERE id = ?').get(pa).name).toBe('De Ana');
+  });
+
+  it('si 003 falla a mitad se revierte entera y la DB queda en 002 con sus hashes', () => {
+    const path = join(dir, 'v2-rota.sqlite');
+    const { before } = seed002(path);
+    const db = openDatabase(path);
+    open.push(db);
+    const all = loadMigrations();
+    const broken = { ...all[2], sql: `${all[2].sql}\nSELECT * FROM no_existe;` };
+    expect(() => migrate(db, { migrations: [...all.slice(0, 2), broken] })).toThrow(/Falló la migración 3-google-identity/);
+    expect(db.isTransaction).toBe(false);
+    expect(columns(db, 'users')).toContain('password_hash');
+    expect(db.prepare('SELECT id AS user_id, password_hash FROM users ORDER BY id').all()).toEqual(before.hashes);
+    expect(db.prepare(
+      "SELECT name FROM sqlite_master WHERE name IN ('password_credentials','external_identities','oauth_attempts')",
+    ).all()).toEqual([]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }]);
+    // Reintentar con la migración correcta completa la actualización.
+    expect(migrate(db)).toEqual([3]);
+    expect(db.prepare('SELECT user_id, password_hash FROM password_credentials ORDER BY user_id').all()).toEqual(before.hashes);
+  });
+
+  it('borrar un usuario sin proyectos borra en cascada credencial, identidad e intentos; sesiones borran sus intentos', () => {
+    const db = tempDb();
+    migrate(db);
+    const u = insertUser(db, 'solo@example.com');
+    const other = insertUser(db, 'otro@example.com');
+    db.prepare('INSERT INTO external_identities VALUES (?, ?, ?, ?)').run('google', 'sub-u', u, NOW);
+    db.prepare('INSERT INTO external_identities VALUES (?, ?, ?, ?)').run('google', 'sub-o', other, NOW);
+    db.prepare('INSERT INTO sessions (id_hash, payload, expires_at) VALUES (?, ?, 1)').run(SID_HASH, '{}');
+    db.prepare('INSERT INTO sessions (id_hash, payload, expires_at) VALUES (?, ?, 1)').run(h('d'), '{}');
+    insertAttempt(db, { state: h('1'), purpose: 'link', userId: u, returnTo: 'account' });
+    insertAttempt(db, { state: h('3'), session: h('d') });
+
+    db.prepare('DELETE FROM users WHERE id = ?').run(u);
+    expect(db.prepare('SELECT user_id FROM password_credentials').all()).toEqual([{ user_id: other }]);
+    expect(db.prepare('SELECT subject FROM external_identities').all()).toEqual([{ subject: 'sub-o' }]);
+    expect(db.prepare('SELECT state_hash FROM oauth_attempts').all()).toEqual([{ state_hash: h('3') }]);
+
+    db.prepare('DELETE FROM sessions WHERE id_hash = ?').run(h('d'));
+    expect(count(db, 'oauth_attempts')).toBe(0);
+  });
+
+  it('identidades: (provider, subject) único, un vínculo Google por usuario, proveedor y sub válidos', () => {
+    const db = tempDb();
+    migrate(db);
+    const u = insertUser(db, 'u@example.com');
+    const v = insertUser(db, 'v@example.com');
+    const ins = db.prepare('INSERT INTO external_identities (provider, subject, user_id, created_at) VALUES (?, ?, ?, ?)');
+    ins.run('google', 'sub-1', u, NOW);
+    expect(() => ins.run('google', 'sub-1', v, NOW)).toThrow(/UNIQUE|PRIMARY/);
+    expect(() => ins.run('google', 'sub-2', u, NOW)).toThrow(/UNIQUE/);
+    expect(() => ins.run('github', 'sub-3', v, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run('google', '', v, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run('google', 's'.repeat(256), v, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run('google', 'sub-4', randomUUID(), NOW)).toThrow(/FOREIGN KEY/);
+    expect(() => ins.run('google', 'sub-5', v, 'ayer')).toThrow(/CHECK/);
+    ins.run('google', 's'.repeat(255), v, NOW);
+    expect(count(db, 'external_identities')).toBe(2);
+  });
+
+  it('intentos: hashes hex, verifier PKCE, propósito/usuario coherentes y sesión existente', () => {
+    const db = tempDb();
+    migrate(db);
+    const u = insertUser(db);
+    db.prepare('INSERT INTO sessions (id_hash, payload, expires_at) VALUES (?, ?, 1)').run(SID_HASH, '{}');
+    expect(() => insertAttempt(db, { state: 'estado-en-claro' })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { session: h('e') })).toThrow(/FOREIGN KEY/);
+    expect(() => insertAttempt(db, { verifier: 'corto' })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { verifier: `${'v'.repeat(42)}/` })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { verifier: 'v'.repeat(129) })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { purpose: 'otro' })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { purpose: 'link' })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { purpose: 'login', userId: u })).toThrow(/CHECK/);
+    expect(() => insertAttempt(db, { returnTo: 'https://evil.example' })).toThrow(/CHECK/);
+    insertAttempt(db, { verifier: 'A-z0._~'.padEnd(128, 'x') });
+    expect(() => insertAttempt(db)).toThrow(/UNIQUE|PRIMARY/);
+    // Consumo atómico de un solo uso: el segundo DELETE … RETURNING no devuelve nada.
+    const consume = db.prepare('DELETE FROM oauth_attempts WHERE state_hash = ? AND session_hash = ? RETURNING purpose');
+    expect(consume.get(h('1'), SID_HASH)).toEqual({ purpose: 'login' });
+    expect(consume.get(h('1'), SID_HASH)).toBeUndefined();
+  });
+});
+
 describe('restricciones del esquema', () => {
   let db;
   beforeEach(() => {
@@ -200,11 +362,17 @@ describe('restricciones del esquema', () => {
   });
 
   it('exige hash Argon2id versionado, UUID y fecha UTC', () => {
-    const ins = db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)');
-    expect(() => ins.run(randomUUID(), 'a@b.co', 'texto-plano', NOW)).toThrow(/CHECK/);
-    expect(() => ins.run('no-es-uuid', 'a@b.co', HASH, NOW)).toThrow(/CHECK/);
-    expect(() => ins.run(randomUUID().toUpperCase(), 'a@b.co', HASH, NOW)).toThrow(/CHECK/);
-    expect(() => ins.run(randomUUID(), 'a@b.co', HASH, '21/11/2026')).toThrow(/CHECK/);
+    const ins = db.prepare('INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)');
+    expect(() => ins.run('no-es-uuid', 'a@b.co', NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(randomUUID().toUpperCase(), 'a@b.co', NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(randomUUID(), 'a@b.co', '21/11/2026')).toThrow(/CHECK/);
+    const cred = db.prepare('INSERT INTO password_credentials (user_id, password_hash) VALUES (?, ?)');
+    const id = randomUUID();
+    ins.run(id, 'a@b.co', NOW);
+    expect(() => cred.run(id, 'texto-plano')).toThrow(/CHECK/);
+    expect(() => cred.run(randomUUID(), HASH)).toThrow(/FOREIGN KEY/);
+    cred.run(id, HASH);
+    expect(() => cred.run(id, HASH)).toThrow(/UNIQUE|PRIMARY/);
   });
 
   it('valida nombre, descripción y fechas del proyecto', () => {
@@ -375,7 +543,7 @@ describe('pnpm db:migrate (runMigrateCli)', () => {
     expect(out2.log).toHaveBeenCalledWith(expect.stringMatching(/sin migraciones pendientes/));
     const db = openDatabase(path);
     open.push(db);
-    expect(count(db, 'schema_migrations')).toBe(2);
+    expect(count(db, 'schema_migrations')).toBe(3);
   });
 
   it('termina con código 1 y mensaje claro ante ruta inválida, sin crear carpetas', () => {

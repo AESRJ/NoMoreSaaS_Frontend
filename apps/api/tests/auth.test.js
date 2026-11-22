@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { SESSION_COOKIE_NAME, createAuth, createRateLimiter, normalizeEmail } from '../src/auth.js';
 import { validateCatalog } from '../src/catalog.js';
-import { migrate, openDatabase } from '../src/db.js';
+import { loadMigrations, migrate, openDatabase } from '../src/db.js';
+import { createAccountStore } from '../src/identities.js';
 import {
   ARGON2_PARAMS,
   HasherBusyError,
@@ -340,7 +341,9 @@ describe('POST /api/auth/register', () => {
 
     const user = db.prepare('SELECT * FROM users').get();
     expect(user.email).toBe('ana@example.com');
-    expect(user.password_hash).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
+    expect(user).not.toHaveProperty('password_hash');
+    const credential = db.prepare('SELECT * FROM password_credentials WHERE user_id = ?').get(user.id);
+    expect(credential.password_hash).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
     expect(user.created_at).toBe('2026-11-21T10:00:00.000Z');
     const rows = db.prepare('SELECT payload FROM sessions').all();
     expect(rows).toHaveLength(1); // la presesión anterior fue destruida
@@ -424,6 +427,20 @@ describe('POST /api/auth/login', () => {
     for (const res of [wrong, missing, short]) expectError(res, 401, 'INVALID_CREDENTIALS');
     expect(wrong.body).toEqual(missing.body);
     expect(short.body).toEqual(missing.body);
+  });
+
+  it('una cuenta solo-Google no entra por contraseña y su correo no se puede registrar en local', async () => {
+    const { app, db } = build();
+    createAccountStore({ db }).createUserWithIdentity({
+      id: randomUUID(), email: 'g@example.com', provider: 'google', subject: 'sub-1', createdAt: '2026-11-21T10:00:00.000Z',
+    });
+    const missing = await login(request.agent(app), 'nadie@example.com', PASSWORD);
+    const googleOnly = await login(request.agent(app), 'g@example.com', PASSWORD);
+    expectError(googleOnly, 401, 'INVALID_CREDENTIALS');
+    expect(googleOnly.body).toEqual(missing.body);
+    expectError(await register(request.agent(app), 'g@example.com'), 409, 'EMAIL_UNAVAILABLE');
+    expect(count(db, 'password_credentials')).toBe(0);
+    expect(count(db, 'users')).toBe(1);
   });
 
   it('no autentica la presesión si las credenciales fallan', async () => {
@@ -686,6 +703,24 @@ describe('persistencia', () => {
     const out = await post(request(second.app), '/api/auth/logout', {}, reg.body.csrfToken, { cookie });
     expect(out.status).toBe(204);
     expect((await login(request.agent(second.app))).body.user).toEqual(reg.body.user);
+  });
+
+  it('una cuenta creada antes de 003 sigue entrando con su contraseña tras migrar, con el mismo UUID', async () => {
+    const path = join(dir, 'v2-login.sqlite');
+    const legacy = openDatabase(path);
+    migrate(legacy, { migrations: loadMigrations().slice(0, 2) });
+    const id = randomUUID();
+    const hash = await createPasswordHasher().hash(PASSWORD);
+    legacy.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)')
+      .run(id, 'previa@example.com', hash, '2026-11-01T10:00:00.000Z');
+    legacy.close();
+
+    const { app, db } = build({ path });
+    expect(db.prepare('SELECT password_hash FROM password_credentials WHERE user_id = ?').get(id).password_hash).toBe(hash);
+    const ok = await login(request.agent(app), 'previa@example.com', PASSWORD);
+    expect(ok.status).toBe(200);
+    expect(ok.body.user).toEqual({ id, email: 'previa@example.com' });
+    expectError(await login(request.agent(app), 'previa@example.com', `${PASSWORD}!`), 401, 'INVALID_CREDENTIALS');
   });
 
   it('una cookie firmada con otro secreto no autentica', async () => {

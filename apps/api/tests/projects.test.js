@@ -14,7 +14,7 @@ import { validAlternative, validCatalog } from './fixtures.js';
 
 // Cada prueba usa su propio archivo SQLite temporal y un reloj inyectado.
 // El hasher Argon2 real se cubre en auth.test.js; aquí se usa uno determinista
-// rápido (mismo formato aceptado por el CHECK de users.password_hash).
+// rápido (mismo formato aceptado por el CHECK de password_credentials.password_hash).
 const ORIGIN = 'http://127.0.0.1:5573';
 const SECRET = randomBytes(32).toString('hex');
 const PASSWORD = 'una contraseña larga y segura';

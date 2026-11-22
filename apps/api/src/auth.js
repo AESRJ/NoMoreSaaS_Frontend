@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import express from 'express';
 import session from 'express-session';
 import { ApiError } from './errors.js';
+import { EmailUnavailableError, createAccountStore } from './identities.js';
 import { HasherBusyError, createPasswordHasher, isValidPassword } from './passwords.js';
 import { IDLE_TIMEOUT_MS, SqliteSessionStore, absoluteDeadline } from './sessions.js';
 
@@ -197,18 +198,14 @@ export function createAuth({
     next();
   }
 
-  const statements = {
-    userById: db.prepare('SELECT id, email FROM users WHERE id = ?'),
-    userByEmail: db.prepare('SELECT id, email, password_hash FROM users WHERE email = ?'),
-    insertUser: db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)'),
-  };
+  const accounts = createAccountStore({ db });
 
   const toUserDto = (row) => ({ id: row.id, email: row.email });
 
   function currentUser(req) {
     const userId = req.session && req.session.userId;
     if (typeof userId !== 'string') return null;
-    const row = statements.userById.get(userId);
+    const row = accounts.findUserById(userId);
     return row ? toUserDto(row) : null;
   }
 
@@ -285,9 +282,9 @@ export function createAuth({
     const passwordHash = await hasher.hash(body.password);
     const id = randomUUID();
     try {
-      statements.insertUser.run(id, email, passwordHash, new Date(now()).toISOString());
+      accounts.createLocalUser({ id, email, passwordHash, createdAt: new Date(now()).toISOString() });
     } catch (error) {
-      if (/UNIQUE constraint failed: users\.email/.test(error.message)) throw errors.emailUnavailable();
+      if (error instanceof EmailUnavailableError) throw errors.emailUnavailable();
       throw error;
     }
     const csrfToken = await establishSession(req, id);
@@ -304,8 +301,9 @@ export function createAuth({
     limit(limiters.loginPerEmail, emailKey);
 
     const email = normalizeEmail(body.email);
-    const row = email && isValidPassword(body.password) ? statements.userByEmail.get(email) : undefined;
-    const ok = row ? await hasher.verify(body.password, row.password_hash) : await hasher.verifyDummy(body.password);
+    // Sin credencial local (correo inexistente o cuenta solo-Google): mismo coste y error genérico.
+    const row = email && isValidPassword(body.password) ? accounts.findLocalByEmail(email) : undefined;
+    const ok = row ? await hasher.verify(body.password, row.passwordHash) : await hasher.verifyDummy(body.password);
     if (!ok) throw errors.invalidCredentials();
 
     limiters.loginPerEmail.reset(emailKey);

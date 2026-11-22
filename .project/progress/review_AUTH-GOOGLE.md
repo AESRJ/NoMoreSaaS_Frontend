@@ -1,0 +1,9 @@
+# Revisión AUTH-GOOGLE
+
+## T001 — aceptada por Codex, 2026-11-22 15:14
+Claude exit0/is_error=false; únicamente T001 marcada. Diff de migración003, repositorio de cuentas, adaptación auth y pruebas revisado contra snapshot005/T004 del índice. Copia exacta de hashes antes de DROP COLUMN, sin reconstruir users; índices/FK/datos relacionados y sesiones preservados. Identidades únicas por proveedor/sub y por usuario/proveedor, sin tokens ni credencial ficticia. Intentos privados ligados porFK a sesión, hashes y restricciones de propósito/verifier; consumo productivo enT002.
+Registro local transaccional; login sigue usando Argon2, dummy si no hay credencial y error genérico. No autoenlace por correo ni cambios de Origin/CSRF/límites/sesiones. No UI/endpointsOIDC/dependencias nuevos aún.
+Independiente: vitest db/identities/auth/projects144/144PASS; diffcheckPASS. La prueba de cuenta pre003 usa hashArgon2real en002 y loginHTTP tras migrar, verifica mismoUUID/hash y rechazo contraseña incorrecta. DB002 con dosusuarios/proyectos/perfil/avance/sesión, rollback003rota/reintento, integridad/FK/cascadas cubiertos. ClaudeAPI274/274PASS ylintPASS; sin repetirbuild/web/e2e por cambio soloAPI. Únicamente DBtemporales, sin migrar preview.
+
+## Preparación documental006 revisada
+Maestro2f21547 activó006 tras005code_reviewed y convergencia. Revisados AGENTS/CLAUDE/contexto/cola,005closed/006ready, identidad-source→specs/006-acceso-google ySHAmaestro, punteros y aclaracióncallback303/409JSON enplan/tarea/contrato/análisis; initambosPASS antesdeClaude. Solo006inprogress. Estos cambios son documentación de preparación revisada; no amplían producto. T001 aceptada pendiente congelar snapshot hasta que helper005/T004 libere índice~15:25. Googlelive yRailwayoperativo/costo siguenpendientes; no done006 ni publicación.

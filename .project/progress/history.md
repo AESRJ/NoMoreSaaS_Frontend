@@ -72,3 +72,9 @@ db.test.js «limita a 100 proyectos»: preparación en una transacción, asercio
 
 ## 2026-11-22 — T004 segunda corrección Codex (Claude)
 portada.spec.js: color del círculo activo con toHaveCSS reintentable (RGB exacto; antes falló 1/48 en 360 por transición en curso). portada 4/4; e2e completo 48/48 en 3501/5773. T004 marcada tras checks. Sin git add/commit.
+
+## 2026-11-22 — T001 006-acceso-google (Claude)
+Migración 003 (password_credentials con copia exacta de hashes + DROP COLUMN, external_identities, oauth_attempts ligado a sesión) y repositorio identities.js; login/registro adaptados sin cambiar seguridad. API enfocada 144/144, API completa 274/274, lint OK, check_handoff OK. Solo DB temporales. Detalle en impl_AUTH-GOOGLE.md. Sin git add/commit.
+
+## 2026-11-22 — Preparación006 y revisiónT001 (Codex)
+Maestro2f21547:005códigoaceptado/closed,006únicaactiva/ready,007/008draft. AGENTS/CLAUDE/contexto/handoffs/cola/punteros yreferenciaversionada006 alSHAmaestro revisados; initambosPASS. Aclaración303callback/409JSON sin ampliaralcance. T001Claude exit0/is_error=false, soloT001marcada. Codexrevisómigración/repositorio/auth/pruebas y ejecutó144enfocadasPASS/diffcheckPASS; Claude274API/lintPASS. Cuenta002conArgon2real conservaUUID/hash ylogintrasmigrar; DBrelacionada/rollback/cascadasverificadas enDBtemporal. No migrarpreview ni afirmarGooglelive. T001aceptada,snapshotesperaíndicelibretras005/T004~15:25. Sinpush/despliegue.

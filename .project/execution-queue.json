@@ -4,7 +4,7 @@
   "execution_repository": "C:\\Users\\Roel\\Documents\\NoMoreSaaS_Frontend",
   "branch": "feat/revision-y-railway",
   "role_contract": "Codex plans/reviews/docs/operations; Claude product code only",
-  "active": "005-ajustes-ui",
+  "active": "006-acceso-google",
   "order": [
     "005-ajustes-ui",
     "006-acceso-google",
@@ -14,7 +14,7 @@
   "commit_interval_minutes": 20,
   "minimum_minutes_between_commits": 20,
   "earliest_retry_local": "2026-11-22T14:21:00-08:00",
-  "implementation_status": "005_code_reviewed_waiting_task_commits",
+  "implementation_status": "006_T001_reviewed_snapshot_pending",
   "external_dependencies": [
     "GoogleOAuth client setup not understood by user: guided setup required; no secrets in chat",
     "Railway connected per user; operative tools/account/billing not yet verified"
@@ -26,5 +26,20 @@
     "progress/current.md",
     "docs/context/project-context.md",
     ".project/execution-queue.json (code checkout)"
-  ]
+  ],
+  "reviewed_features": {
+    "005-ajustes-ui": {
+      "status": "done",
+      "code_reviewed": true,
+      "review_report": ".project/progress/review_UX-REVISION.md",
+      "commits": [
+        "a73e628",
+        "c3ab411",
+        "2adea045",
+        "ddd3bac"
+      ],
+      "pending_task_commit": null,
+      "reviewed_commit": "ddd3bac9dfb4490fb3ffa81babf9e652cb5ee41f"
+    }
+  }
 }
