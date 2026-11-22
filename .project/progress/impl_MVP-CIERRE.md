@@ -59,3 +59,22 @@ Verificación (real):
 - `pnpm --filter @nomoresaas/api exec vitest run tests/projects.test.js tests/db.test.js` → 72/72.
 - `pnpm exec eslint apps/api/src apps/api/tests` → sin errores.
 - No ejecutado: suite completa, web, e2e. DB de preview sin tocar. Sin UI (T005).
+
+## T005 — Recorrido web /proyectos/:id/flujo (2026-11-22, Claude)
+- Impeccable invocada; su launcher `context` requirió aprobación y no se ejecutó: se leyó el contexto existente (sin PRODUCT/DESIGN; tokens de `styles.css`, modo Operate). No se generó ningún documento de diseño. Paleta exacta y portada siguen para T006.
+- `apps/web/src/api/workflow.js` (nuevo): `getWorkflow`, `saveProfile` (solo 11 campos editables), `saveProgress`, validación de forma; integrado en `defaultProjectsClient`. `api/auth.js`: `AuthRequestError.fields` desde `error.fields` (copiado a objeto sin prototipo, solo texto).
+- `apps/web/src/pages/WorkflowPage.jsx` (nuevo) + ruta privada en `App.jsx` + enlace «Equipo, evaluación y plan» en `ProjectPage.jsx`. Navegación Equipo/Evaluación/Plan por `?vista=` (recarga y teclado), retorno al proyecto.
+  - Equipo: todos los campos de Profile con límites del modelo; validación cliente sin envío y foco al primer inválido; errores por campo del servidor; valores conservados ante error; 401 → `expireSession` con borrador en memoria (`projectDraft`, aislado por cuenta y ruta); «He comprobado que mi CPU es compatible con x86-64-v2» con ayuda «solo si lo verificaste». Aviso antes de guardar si hay pasos marcados.
+  - Evaluación: solo del perfil guardado (sin perfil → estado vacío; cambios sin guardar → aviso), estado, tabla estimado/declarado, ecuaciones, avisos por severidad con fuente, desglose editorial vs dato oficial con fuentes fechadas.
+  - Plan: pasos por alternativa/etapa con tareas, comprobación, condiciones pendientes, fuentes; prompt como texto (`<pre>`), copia con `navigator.clipboard.writeText` y, si falla, textarea de solo lectura seleccionado sin fingir éxito; plan bloqueado/retirada con motivos y enlace a editar; avance stale avisado. Guardado de avance serializado (un envío, casillas deshabilitadas, sin marcado optimista); 409 → aviso y «Recargar el plan».
+  - `ProjectFormPage.jsx`: al editar, si cambia la selección y hay avance, aviso de que no se aplicará al nuevo plan.
+  - Estado montado por `${userId}|${projectId}` y `useOwnedRequest` (abort/descartar respuestas de otra cuenta).
+- `styles.css`: estilos `flow-*`/`prompt-box*` con los tokens existentes.
+- Pruebas: `apps/web/tests/workflow.test.jsx` (16: cliente HTTP y fields sin prototipo, enlace y campos/etiqueta x86-64-v2, sin perfil → vacío, validación/guardado/evaluación, 400 por campo + 401 → /entrar, avisos de cambios con avance, plan como texto, avance serializado, 409 + recarga + stale, portapapeles éxito/fallo, bloqueado/retirada, error+reintento, borrador de otra cuenta, 404, aviso al editar selección). E2E real nuevo `tests/e2e/workflow.spec.js` (registro → proyecto Nextcloud+WireGuard → equipo → evaluación real → plan → marcar → recargar → cookies borradas → /entrar sin datos privados; sin desbordamiento y sin errores de página).
+
+Verificación (real):
+- `pnpm --filter @nomoresaas/web exec vitest run tests/workflow.test.jsx` → 16/16 (antes: 2 fallos; uno real de foco tras validar, corregido con efecto posterior al render; otro del test por el portapapeles de user-event).
+- `pnpm --filter @nomoresaas/web exec vitest run tests/workflow.test.jsx tests/projects.test.jsx` → 50/50 (con 15 casos de workflow antes de añadir el de aislamiento); `tests/auth.test.jsx` → 56/56.
+- `pnpm test:e2e tests/e2e/workflow.spec.js` → 2/2 (escritorio-1280, movil-360), API/SQLite temporal real. Dos ejecuciones previas fallaron por aserciones del test (texto del descargo; `check()` frente a casilla no optimista), corregidas. Nota: se ejecutó con los puertos por defecto de `playwright.config.js` (3001/5173) porque la sesión no permitió fijar `API_PORT`/`WEB_PORT`; DB temporal propia, preview 3301/5573 no tocado.
+- `pnpm exec eslint apps/web/src apps/web/tests tests/e2e/workflow.spec.js` → sin errores. `pnpm build` → correcto.
+- No ejecutado: e2e antiguos (catalog/identity), suite web completa, revisión visual manual 360/1280 (T006).

@@ -1,5 +1,6 @@
 import { createContext, createElement, useContext } from 'react';
 import { AuthRequestError, send } from './auth.js';
+import { getWorkflow, saveProfile, saveProgress } from './workflow.js';
 
 // Cliente de proyectos privados. Sin caché: cada vista pide sus datos para la
 // identidad actual y descarta respuestas de otra identidad (ver useProjectRequest).
@@ -60,7 +61,16 @@ export async function deleteProject(id, { csrfToken }) {
   await send(projectPath(id), { method: 'DELETE', body: {}, csrfToken });
 }
 
-export const defaultProjectsClient = Object.freeze({ listProjects, getProject, createProject, updateProject, deleteProject });
+export const defaultProjectsClient = Object.freeze({
+  listProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  getWorkflow,
+  saveProfile,
+  saveProgress,
+});
 
 const ProjectsClientContext = createContext(defaultProjectsClient);
 

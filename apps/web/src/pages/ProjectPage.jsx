@@ -148,6 +148,16 @@ export function ProjectPage() {
 
       {confirming && <DeleteConfirmation project={project} onCancel={cancelDelete} onDeleted={deleted} />}
 
+      <section className="detail-section project-flow-link">
+        <h2>Siguiente paso</h2>
+        <p>Declara tu equipo, revisa la evaluación orientativa y sigue el plan guiado con prompts copiables.</p>
+        <p>
+          <Link className="button button--primary" to={`/proyectos/${project.id}/flujo`}>
+            Equipo, evaluación y plan
+          </Link>
+        </p>
+      </section>
+
       <section className="detail-section">
         <h2>Descripción</h2>
         {project.description ? <p className="project-detail__description">{project.description}</p> : <p className="muted">Sin descripción.</p>}

@@ -115,7 +115,7 @@ function AlternativePicker({ index, ids, onChange, retiredIds, error, errorId })
   );
 }
 
-function ProjectForm({ project }) {
+function ProjectForm({ project, progressCount = 0 }) {
   const isEdit = Boolean(project);
   const client = useProjectsClient();
   const catalog = useCatalog();
@@ -317,6 +317,12 @@ function ProjectForm({ project }) {
         </CatalogGate>
       </div>
 
+      {isEdit && progressCount > 0 && !sameList(values.alternativeIds, original) && (
+        <p className="callout callout--warning" role="note">
+          Cambiar la selección recalcula el plan del proyecto: los {progressCount} pasos marcados no se aplicarán al nuevo plan.
+        </p>
+      )}
+
       <div className="project-form__actions">
         <button
           type="submit"
@@ -338,6 +344,10 @@ function EditProject({ id }) {
   const client = useProjectsClient();
   const userId = useAuth((state) => state.user?.id);
   const request = useOwnedRequest((signal) => client.getProject(id, { signal }), `project:${id}`);
+  // Solo para avisar: si falla, el formulario funciona igual (sin aviso de avance).
+  const workflow = useOwnedRequest((signal) => client.getWorkflow(id, { signal }), `project-progress:${id}`);
+  const progressCount =
+    workflow.status === 'success' && !workflow.data.progress.stale ? workflow.data.progress.completedStepIds.length : 0;
   useDocumentTitle(request.status === 'success' ? `Editar ${request.data.name}` : 'Editar proyecto');
   if (request.status === 'loading') return <ProjectsLoading label="Cargando el proyecto…" />;
   if (request.status === 'error') {
@@ -353,7 +363,7 @@ function EditProject({ id }) {
         <h1>Editar proyecto</h1>
       </header>
       <div className="auth-panel">
-        <ProjectForm key={`${userId}|${request.data.id}`} project={request.data} />
+        <ProjectForm key={`${userId}|${request.data.id}`} project={request.data} progressCount={progressCount} />
       </div>
     </div>
   );

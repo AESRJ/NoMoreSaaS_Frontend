@@ -12,3 +12,6 @@ Verificación independiente: 101/101 pruebas API de catálogo/proyectos;32/32 Pl
 
 ## T004 aceptada
 13/13 plan pasan independientemente. Prueba HTTP con servidor real y SQLite temporal: registroA/B, perfil, evaluación, etapas/prompts, avance, reinicio real del proceso conserva sesión/perfil/avance, cambioequipo invalida y409, insuficiente/desconocido, rechazo ajeno/CSRF/campos inválidos y borrado correctos. Primer intento del script QA envió fingerprint de formato inválido en prueba ajena (400 esperado por validación); corregido fixture QA a64hex para comprobar404, sin modificar producto por Codex. Revisión de transacción/fingerprint/plantillas, sin ejecución remota.
+
+## T005 aceptada
+Smoke real del flujo2/2 a360/1280 y16/16web de workflow pasan independientemente. Revisión de navegación/API, estado por usuario/proyecto, serialización de guardado de avance, render texto y copyfallback. Claude registró acceso/regresiones, lint/build correctos. Primera invocación de pnpm del revisor desde maestro no encontró workspace; repetida en checkout correcto pasó, sin producto cambiado. Diseño/imagen y revisión visual final siguenT006.

@@ -11,6 +11,7 @@ import { ProjectPage } from './pages/ProjectPage.jsx';
 import { ProjectsPage } from './pages/ProjectsPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
 import { ServicePage } from './pages/ServicePage.jsx';
+import { WorkflowPage } from './pages/WorkflowPage.jsx';
 
 // React Router en modo declarativo. /proyectos/* solo con sesión (RequireAuth).
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="proyectos/nuevo" element={<ProjectFormPage />} />
           <Route path="proyectos/:id" element={<ProjectPage />} />
           <Route path="proyectos/:id/editar" element={<ProjectFormPage />} />
+          <Route path="proyectos/:id/flujo" element={<WorkflowPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

@@ -5,15 +5,17 @@ export class AuthRequestError extends Error {
   /**
    * @param {'network' | 'http' | 'invalid'} kind
    * @param {string} message
-   * @param {{ status?: number, code?: string, retryAfterSeconds?: number }} [details]
+   * @param {{ status?: number, code?: string, retryAfterSeconds?: number, fields?: Record<string, string> }} [details]
    */
-  constructor(kind, message, { status, code, retryAfterSeconds } = {}) {
+  constructor(kind, message, { status, code, retryAfterSeconds, fields } = {}) {
     super(message);
     this.name = 'AuthRequestError';
     this.kind = kind;
     this.status = status;
     this.code = code;
     this.retryAfterSeconds = retryAfterSeconds;
+    // Errores de validación por campo (p. ej. perfil del equipo); solo texto.
+    if (fields) this.fields = fields;
   }
 }
 
@@ -48,6 +50,16 @@ function toSession(data, { requireUser = false } = {}) {
   if (data.user === null && !requireUser) return { user: null, csrfToken: data.csrfToken };
   if (!isUser(data.user)) throw new AuthRequestError('invalid', INVALID_MESSAGE);
   return { user: { id: data.user.id, email: data.user.email }, csrfToken: data.csrfToken };
+}
+
+/** Copia solo pares campo → texto, en un objeto sin prototipo. */
+function toFieldErrors(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const fields = Object.create(null);
+  for (const [key, text] of Object.entries(value)) {
+    if (typeof text === 'string') fields[key] = text;
+  }
+  return Object.keys(fields).length ? fields : undefined;
 }
 
 /** Petición JSON same-origin compartida por los clientes de auth y proyectos. */
@@ -93,6 +105,7 @@ export async function send(path, { method = 'GET', body, csrfToken, signal } = {
         status: response.status,
         code: typeof envelope.code === 'string' ? envelope.code : undefined,
         retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+        fields: toFieldErrors(envelope.fields),
       },
     );
   }
