@@ -7,14 +7,27 @@ function removedMessage(count) {
     : `Se retiraron ${count} alternativas de tu selección porque ya no están en el catálogo.`;
 }
 
-/** Contador 0–3, acciones y avisos accesibles de la selección. */
+// La comparación es pública: en cuenta y proyectos privados la banda no aparece.
+const PRIVATE_PREFIXES = ['/proyectos', '/entrar', '/registro'];
+const isPrivatePath = (pathname) => PRIVATE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+
+/** Contador 1–3, acciones y avisos accesibles de la selección (oculta sin selección ni aviso). */
 export function SelectionBar() {
   const ids = useComparison((state) => state.ids);
   const notice = useComparison((state) => state.notice);
   const clear = useComparison((state) => state.clear);
   const dismissNotice = useComparison((state) => state.dismissNotice);
-  const onComparePage = useLocation().pathname === '/comparar';
+  const { pathname } = useLocation();
+  const onComparePage = pathname === '/comparar';
   const missing = Math.max(0, 2 - ids.length);
+
+  if (isPrivatePath(pathname) || (!ids.length && !notice)) return null;
+
+  function clearSelection() {
+    clear();
+    // El botón desaparece con la banda: el foco vuelve al contenido principal.
+    document.getElementById('contenido')?.focus({ preventScroll: true });
+  }
 
   return (
     <aside className="selection-bar" aria-label="Selección para comparar">
@@ -30,7 +43,7 @@ export function SelectionBar() {
             </Link>
           ) : null}
           {ids.length ? (
-            <button type="button" className="button button--ghost button--small" onClick={clear}>
+            <button type="button" className="button button--ghost button--small" onClick={clearSelection}>
               Limpiar selección
             </button>
           ) : null}

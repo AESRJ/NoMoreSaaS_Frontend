@@ -1,4 +1,9 @@
+import { mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+
+const SCREENSHOT_DIR = fileURLToPath(new URL('../../.local/screenshots/', import.meta.url));
+test.beforeAll(() => mkdirSync(SCREENSHOT_DIR, { recursive: true }));
 
 // Recorrido real del flujo (entrega 004, T005): API, SQLite temporal y web
 // reales, sin mocks. Una sola cuenta por proyecto de navegador.
@@ -44,6 +49,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await page.getByLabel('Sistema operativo del servidor').selectOption('linux');
   await page.getByLabel('Arquitectura de la CPU').selectOption('amd64');
   await page.getByLabel('Tipo de almacenamiento').selectOption('ssd');
+  await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-equipo-${page.viewportSize().width}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Guardar equipo' }).click();
   await expect(page.getByText(/equipo guardado/i)).toBeVisible();
 
@@ -53,6 +59,13 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await expect(page.getByText(/RAM requerida = Σ RAM base \(2,25 GiB\)/)).toBeVisible();
   await expect(page.getByText(/ni garantiza que la instalación funcione/)).toBeVisible();
   await expectNoPageOverflow(page);
+  // Paleta: aviso informativo en carbón con texto blanco suave, etiqueta textual visible.
+  const info = page.locator('.flow-warning--info').first();
+  await expect(info).toContainText('Información');
+  expect(await info.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color])).toEqual(['rgb(28, 28, 28)', 'rgb(238, 238, 238)']);
+  // Ruta privada: sin banda de comparación.
+  await expect(page.getByRole('complementary', { name: 'Selección para comparar' })).toHaveCount(0);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-evaluacion-${page.viewportSize().width}.png`, fullPage: true });
 
   // Plan: ocho pasos, prompt visible como texto.
   await page.getByRole('link', { name: 'Plan' }).click();
@@ -65,6 +78,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await page.getByText('Ver prompt').first().click();
   await expect(page.locator('.prompt-box__text').first()).toContainText('Contexto: proyecto NoMoreSaaS «Casa autoalojada»');
   await expectNoPageOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-plan-${page.viewportSize().width}.png` });
 
   // Recarga: el avance viene del servidor.
   await page.reload();

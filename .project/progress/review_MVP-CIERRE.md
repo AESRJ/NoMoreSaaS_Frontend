@@ -15,3 +15,6 @@ Verificación independiente: 101/101 pruebas API de catálogo/proyectos;32/32 Pl
 
 ## T005 aceptada
 Smoke real del flujo2/2 a360/1280 y16/16web de workflow pasan independientemente. Revisión de navegación/API, estado por usuario/proyecto, serialización de guardado de avance, render texto y copyfallback. Claude registró acceso/regresiones, lint/build correctos. Primera invocación de pnpm del revisor desde maestro no encontró workspace; repetida en checkout correcto pasó, sin producto cambiado. Diseño/imagen y revisión visual final siguenT006.
+
+## T006 aceptada
+Claude generó/integró imagen Higgsfield y aplicó ajustes finales; su cuota5h se agotó tras escribir los últimos cambios (restablecimiento14:20). Codex no modificó código de producto. Revisión independiente final: lint/build correctos,254API/169web/38e2e pasan; PNG/hash/dimensiones/paleta real verificados y capturas360/1280 inspeccionadas. Prueba UI adicional real: imagen carga, clipboard contiene prompt, avance permanece trasrecarga, ceroerrores/desbordamiento. Banda vacía/privada oculta y avisos en paleta corregidos. T007 queda solo consolidación/revisión/documentación; smoke de producto ya implementado por Claude enT005/T006.

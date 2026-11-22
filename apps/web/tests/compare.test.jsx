@@ -90,7 +90,10 @@ describe('US3: selección', () => {
     expect(within(screen.getByRole('table')).getAllByRole('columnheader')).toHaveLength(3);
     await user.click(screen.getByRole('button', { name: /limpiar selección/i }));
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(counter()).toHaveTextContent('0 de 3');
+    // Sin selección la banda desaparece y el foco vuelve al contenido.
+    expect(screen.queryByTestId('selection-count')).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Selección para comparar' })).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveFocus();
     expect(screen.getByText(/faltan 2/i)).toBeInTheDocument();
   });
 

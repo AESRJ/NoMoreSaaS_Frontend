@@ -10,6 +10,29 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 
 const FROM_SEARCH = { fromSearch: true };
 
+// Imagen generada con Higgsfield (job ade277e0-1c97-4ed2-9256-26620b81639d,
+// modelo gpt_image_2_6). Si el archivo no está disponible no se sustituye por
+// otra imagen: la portada sigue funcionando solo con el texto.
+export const HERO_IMAGE_SRC = '/images/computadora-higgsfield.png';
+
+function HeroComputer() {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <figure className="hero__visual">
+      <img
+        src={HERO_IMAGE_SRC}
+        alt="Computadora de escritorio negra y minimalista con una franja de luz lima en el frontal"
+        width="1168"
+        height="880"
+        decoding="async"
+        fetchPriority="high"
+        onError={() => setFailed(true)}
+      />
+    </figure>
+  );
+}
+
 export function CatalogPage() {
   const catalog = useCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,15 +66,18 @@ export function CatalogPage() {
   return (
     <div className="page">
       <header className="hero">
-        <h1>Alternativas autoalojables a servicios SaaS</h1>
-        <p className="hero__lead">
-          Encuentra alternativas autoalojadas para los servicios que usas, revisa sus capacidades, limitaciones, licencias y fuentes
-          oficiales, y compara hasta tres.
-        </p>
-        <p className="page-meta">
-          <span className="tag">Catálogo público</span>
-          <span>Sin registro</span>
-        </p>
+        <HeroComputer />
+        <div className="hero__text">
+          <h1>Alternativas autoalojables a servicios SaaS</h1>
+          <p className="hero__lead">
+            Encuentra alternativas autoalojadas para los servicios que usas, revisa sus capacidades, limitaciones, licencias y fuentes
+            oficiales, y compara hasta tres.
+          </p>
+          <p className="page-meta">
+            <span className="tag">Catálogo público</span>
+            <span>Sin registro</span>
+          </p>
+        </div>
       </header>
 
       <CatalogGate catalog={catalog}>

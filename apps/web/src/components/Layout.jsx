@@ -101,7 +101,9 @@ export function Layout() {
   const count = useComparison((state) => state.ids.length);
   const { pathname } = useLocation();
   const mainRef = useRef(null);
-  const firstRender = useRef(true);
+  // Última ruta enfocada: la carga inicial (también con el doble efecto de
+  // StrictMode) no mueve el foco ni desplaza la página.
+  const focusedPath = useRef(pathname);
   const navigate = useNavigate();
   const ensureSession = useAuth((state) => state.ensureSession);
   const announcement = useAuth((state) => state.announcement);
@@ -132,10 +134,8 @@ export function Layout() {
 
   // Al cambiar de ruta, lleva el foco al contenido para lectores de pantalla.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
+    if (focusedPath.current === pathname) return;
+    focusedPath.current = pathname;
     mainRef.current?.focus({ preventScroll: false });
   }, [pathname]);
 
