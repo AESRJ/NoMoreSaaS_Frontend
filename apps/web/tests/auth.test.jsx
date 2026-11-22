@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthRequestError, fetchSession, login, logout, register } from '../src/api/auth.js';
 import { RequireAuth, authPathFor, safeRedirectTarget } from '../src/components/RequireAuth.jsx';
 import { AUTH_STATUS, AuthProvider, createAuthStore } from '../src/store/auth.js';
-import { anonymousAuthClient, renderApp, resetSelection } from './helpers.jsx';
+import { anonymousAuthClient, renderApp } from './helpers.jsx';
 
 const USER_A = { id: '11111111-1111-4111-8111-111111111111', email: 'ana@example.com' };
 const USER_B = { id: '22222222-2222-4222-8222-222222222222', email: 'bea@example.com' };
@@ -35,7 +35,6 @@ const location = () => screen.getByTestId('location').textContent;
 const banner = () => document.querySelector('.site-header');
 
 beforeEach(() => {
-  resetSelection();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -383,7 +382,7 @@ describe('cabecera y estados de sesión', () => {
   });
 
   it('desde una página pública, Entrar no añade destino (se irá a /proyectos)', async () => {
-    renderApp('/comparar');
+    renderApp('/saas/drive');
     expect(await within(banner()).findByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
   });
 
@@ -398,7 +397,7 @@ describe('cabecera y estados de sesión', () => {
     const client = anonymousAuthClient({
       fetchSession: vi.fn().mockResolvedValueOnce({ user: USER_A, csrfToken: 'a1' }).mockResolvedValue({ user: null, csrfToken: 'p2' }),
     });
-    const { user, authStore } = renderApp('/comparar', { authClient: client });
+    const { user, authStore } = renderApp('/saas/drive', { authClient: client });
     const reset = vi.fn();
     authStore.getState().onPrivateReset(reset);
     expect(await within(banner()).findByText(USER_A.email)).toBeInTheDocument();

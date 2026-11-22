@@ -128,6 +128,42 @@ function checkSource(problems, path, source, today) {
   }
 }
 
+function checkHttpsUrl(problems, path, value) {
+  const before = problems.length;
+  checkHttpUrl(problems, path, value);
+  if (problems.length === before && new URL(value).protocol !== 'https:') {
+    problems.push(`${path}: debe ser una URL HTTPS`);
+  }
+}
+
+// Metadatos opcionales de Service (005): URL oficial y fuentes oficiales.
+// Los fixtures anteriores sin estos campos siguen siendo válidos.
+export const SERVICE_SOURCES_MAX = 8;
+
+function checkServiceMetadata(problems, path, service, today) {
+  if (service.officialUrl !== undefined) checkHttpsUrl(problems, `${path}.officialUrl`, service.officialUrl);
+  if (service.sources === undefined) return;
+  if (!Array.isArray(service.sources) || service.sources.length < 1 || service.sources.length > SERVICE_SOURCES_MAX) {
+    problems.push(`${path}.sources: debe ser una lista de 1 a ${SERVICE_SOURCES_MAX} fuentes`);
+    return;
+  }
+  service.sources.forEach((source, index) => {
+    const sourcePath = `${path}.sources[${index}]`;
+    if (!isPlainObject(source)) {
+      problems.push(`${sourcePath}: debe ser un objeto`);
+      return;
+    }
+    checkHttpsUrl(problems, `${sourcePath}.url`, source.url);
+    if (!isValidIsoDate(source.checkedAt)) {
+      problems.push(`${sourcePath}.checkedAt: fecha ISO YYYY-MM-DD no válida`);
+    } else if (source.checkedAt > today) {
+      problems.push(`${sourcePath}.checkedAt: no puede ser posterior a ${today}`);
+    }
+    if (source.kind !== 'official') problems.push(`${sourcePath}.kind: debe ser official`);
+    checkText(problems, `${sourcePath}.note`, source.note, 1000);
+  });
+}
+
 function checkAlternative(problems, path, alt, today) {
   if (!isPlainObject(alt)) {
     problems.push(`${path}: debe ser un objeto`);
@@ -225,6 +261,7 @@ export function validateCatalog(data, { today = new Date().toISOString().slice(0
     checkId(problems, `${path}.id`, service.id);
     checkText(problems, `${path}.name`, service.name, 120);
     checkText(problems, `${path}.description`, service.description, 1000);
+    checkServiceMetadata(problems, path, service, today);
     if (serviceIds.has(service.id)) problems.push(`${path}.id: duplicado "${service.id}"`);
     serviceIds.add(service.id);
   });

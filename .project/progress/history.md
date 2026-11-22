@@ -57,3 +57,6 @@ Codex comprobó sintaxis PowerShell y compilación Python del arnés, init maest
 
 ## 2026-11-22 — T001 005-ajustes-ui (Claude)
 Copy de portada/buscador/ayuda de contraseña actualizado según plan; pruebas existentes adaptadas. pnpm lint OK; vitest hero/catalog/auth/accessible-names 73/73 OK. e2e/smoke pendientes de T004. Detalle en impl_UX-REVISION.md. Pendiente revisión Codex; sin git add/commit.
+
+## 2026-11-22 — T002 005-ajustes-ui (Claude)
+Explorador circular/árbol/comparativa integrada en /, interfaz global de comparación retirada, /comparar redirige internamente. Service.officialUrl/sources opcionales validados y seed con fuentes oficiales revisadas hoy. lint OK, build OK, web 161/161, API catalog 66/66, e2e explorer 8/8 (360/1280, 3501/5773). API completa 262/263 por timeout en db.test.js no tocado; aislado 28/28. Specs e2e antiguos pendientes de T004. Detalle en impl_UX-REVISION.md. Sin git add/commit.

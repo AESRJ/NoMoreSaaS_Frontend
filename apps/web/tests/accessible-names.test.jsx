@@ -1,12 +1,10 @@
 import { screen } from '@testing-library/react';
-import { beforeEach, expect, it } from 'vitest';
-import { renderApp, resetSelection } from './helpers.jsx';
+import { expect, it } from 'vitest';
+import { renderApp } from './helpers.jsx';
 
-beforeEach(() => resetSelection());
-
-// Regresión: el nombre accesible del botón debe separar el nombre de la
-// alternativa del resto del texto ("Archiveroa" era un error real).
-it('los botones de selección tienen nombres accesibles bien formados', async () => {
+// Regresión: el nombre accesible de cada botón debe separar sus partes
+// ("Archiveroa" fue un error real); el monograma decorativo no se lee.
+it('los círculos de servicio tienen nombres accesibles bien formados', async () => {
   renderApp('/');
   await screen.findByRole('searchbox');
   const names = [];
@@ -16,10 +14,5 @@ it('los botones de selección tienen nombres accesibles bien formados', async ()
       return false;
     },
   });
-  expect(names).toEqual([
-    'Añadir Archivero a la comparación',
-    'Añadir Fotero a la comparación',
-    'Añadir Gitero a la comparación',
-    'Añadir GitLibre a la comparación',
-  ]);
+  expect(names).toEqual(['Drive Nube 1 alternativa', 'Fotos Nube 1 alternativa', 'Forja Nube 2 alternativas']);
 });

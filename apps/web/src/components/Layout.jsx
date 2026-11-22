@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { AuthRequestError } from '../api/auth.js';
-import { useCatalog } from '../hooks/useCatalog.js';
 import { AUTH_STATUS, useAuth } from '../store/auth.js';
-import { useComparison } from '../store/comparison.js';
 import { clearProjectDraft, retainProjectDraftFor } from '../store/projectDraft.js';
 import { authPathFor } from './RequireAuth.jsx';
-import { SelectionBar } from './SelectionBar.jsx';
 
 /** Acceso para visitante; Mis proyectos, correo y Salir para la sesión autenticada. */
 function AccountArea({ onSignedOut }) {
@@ -96,9 +93,6 @@ function AccountArea({ onSignedOut }) {
 }
 
 export function Layout() {
-  const { index } = useCatalog();
-  const reconcile = useComparison((state) => state.reconcile);
-  const count = useComparison((state) => state.ids.length);
   const { pathname } = useLocation();
   const mainRef = useRef(null);
   // Última ruta enfocada: la carga inicial (también con el doble efecto de
@@ -126,11 +120,6 @@ export function Layout() {
     navigate('/');
     mainRef.current?.focus({ preventScroll: false });
   }
-
-  // Con datos cargados, retira IDs que ya no existen en el catálogo.
-  useEffect(() => {
-    if (index) reconcile(index.data.alternatives.map((alternative) => alternative.id));
-  }, [index, reconcile]);
 
   // Al cambiar de ruta, lleva el foco al contenido para lectores de pantalla.
   useEffect(() => {
@@ -160,14 +149,6 @@ export function Layout() {
                     Catálogo
                   </NavLink>
                 </li>
-                <li>
-                  <NavLink to="/comparar">
-                    Comparar
-                    <span className={`nav-count${count ? '' : ' nav-count--empty'}`} aria-hidden="true">
-                      {count}
-                    </span>
-                  </NavLink>
-                </li>
               </ul>
             </nav>
             <AccountArea onSignedOut={handleSignedOut} />
@@ -180,7 +161,6 @@ export function Layout() {
       <main id="contenido" ref={mainRef} tabIndex={-1} className="site-main">
         <Outlet />
       </main>
-      <SelectionBar />
       <footer className="site-footer">
         <p>
           Datos curados a partir de documentación oficial, con fecha de revisión por fuente. Las valoraciones de dificultad son evaluaciones

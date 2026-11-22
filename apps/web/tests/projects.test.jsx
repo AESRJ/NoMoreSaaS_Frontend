@@ -4,7 +4,7 @@ import { AuthRequestError } from '../src/api/auth.js';
 import { createProject, deleteProject, listProjects, updateProject } from '../src/api/projects.js';
 import { createAuthStore } from '../src/store/auth.js';
 import { clearProjectDraft, saveProjectDraft, takeProjectDraft } from '../src/store/projectDraft.js';
-import { anonymousAuthClient, emptyProjectsClient, renderApp, resetSelection } from './helpers.jsx';
+import { anonymousAuthClient, emptyProjectsClient, renderApp } from './helpers.jsx';
 
 const USER_A = { id: '11111111-1111-4111-8111-111111111111', email: 'ana@example.com' };
 const USER_B = { id: '22222222-2222-4222-8222-222222222222', email: 'bea@example.com' };
@@ -60,7 +60,6 @@ const banner = () => document.querySelector('.site-header');
 const main = () => screen.getByRole('main');
 
 beforeEach(() => {
-  resetSelection();
   clearProjectDraft();
   localStorage.clear();
   sessionStorage.clear();

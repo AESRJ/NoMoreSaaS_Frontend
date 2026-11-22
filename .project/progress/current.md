@@ -1,3 +1,3 @@
 # Estado actual
 
-005 única activa/ready: T001 aceptada por Codex; commit en preparación. T002–T004 pendientes. Claude construye, Codex revisa/commitea cada20min. 006–008 draft. Google real pendiente cliente/variables; Railway acceso/cuenta/costo sin verificar, sin publicación. init maestro/código PASS; NotebookLM consultado y contrastado con Git. Preview5573/API3301/datos preservados. Evidencia review_UX-REVISION.md.
+005 única activa/ready: T001 aceptada/commita73e628; T002 aceptada por Codex, snapshot pendiente ventana20min (aprox14:45). T003 siguiente, T004 integración pendiente. ConstruyeClaude; revisa/commiteaCodex. T002: lintPASS/web25/API66/e2e8 PASS independientes, capturas360/1280 revisadas. API general deClaude timeout1, aisladoPASS; e2e antiguos pendientesT004. 006–008 draft. Google real y Railway operativo/costo siguen pendientes; no publicación/push. Datos/preview preservados.

@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { DifficultyBadge, LicenseBadge } from '../components/Badges.jsx';
 import { Icon } from '../components/Icon.jsx';
-import { SelectButton } from '../components/SelectButton.jsx';
 import { plural } from '../format.js';
 import { CatalogGate, NotFoundContent } from '../components/StatusViews.jsx';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -58,9 +57,6 @@ export function ServicePage() {
                         <LicenseBadge license={alternative.license} />
                         <DifficultyBadge difficulty={alternative.difficulty} />
                       </p>
-                      <div className="card__actions">
-                        <SelectButton alternative={alternative} />
-                      </div>
                     </li>
                   );
                 })}

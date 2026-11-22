@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
-import { AlternativeCard, ServiceCard } from '../components/Cards.jsx';
 import { SearchForm } from '../components/SearchForm.jsx';
+import { ServiceExplorer } from '../components/ServiceExplorer.jsx';
 import { CatalogGate, EmptyState } from '../components/StatusViews.jsx';
 import { searchCatalog } from '../catalog-index.js';
 import { plural } from '../format.js';
@@ -9,6 +9,20 @@ import { useCatalog } from '../hooks/useCatalog.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 
 const FROM_SEARCH = { fromSearch: true };
+
+/**
+ * Servicios que se muestran como círculos: los que coinciden por nombre y los
+ * que tienen una alternativa que coincide. La coincidencia de searchCatalog no
+ * cambia; solo se agrupa por servicio. Conserva el orden del catálogo.
+ */
+function visibleServices(index, result) {
+  if (!result.filtered) return result.services;
+  const ids = new Set(result.services.map((service) => service.id));
+  for (const alternative of result.alternatives) {
+    for (const service of index.servicesForAlternative(alternative.id)) ids.add(service.id);
+  }
+  return index.data.services.filter((service) => ids.has(service.id));
+}
 
 // Imagen generada con Higgsfield (job ade277e0-1c97-4ed2-9256-26620b81639d,
 // modelo gpt_image_2_6). Si el archivo no está disponible no se sustituye por
@@ -77,6 +91,12 @@ export function CatalogPage() {
         </div>
       </header>
 
+      {location.state?.compareMoved ? (
+        <p className="page-notice" role="status">
+          La comparación ahora está dentro de cada servicio: elige uno y después una de sus alternativas.
+        </p>
+      ) : null}
+
       <CatalogGate catalog={catalog}>
         {(index) => {
           if (index.isEmpty) {
@@ -87,14 +107,15 @@ export function CatalogPage() {
             );
           }
           const result = searchCatalog(index, query);
+          const services = visibleServices(index, result);
           return (
             <>
               <SearchForm value={query} onChange={updateQuery} inputRef={inputRef} />
               <p className="results-summary" role="status">
-                {result.filtered ? `${plural(result.total, 'resultado', 'resultados')} para «${query.trim()}»` : ''}
+                {result.filtered ? `${plural(services.length, 'servicio', 'servicios')} para «${query.trim()}»` : ''}
               </p>
 
-              {result.filtered && result.total === 0 ? (
+              {result.filtered && services.length === 0 ? (
                 <EmptyState
                   title="Sin resultados"
                   action={
@@ -107,29 +128,15 @@ export function CatalogPage() {
                 </EmptyState>
               ) : null}
 
-              {result.services.length ? (
+              {services.length ? (
                 <section className="section" aria-labelledby="servicios-titulo">
-                  <h2 id="servicios-titulo">{result.filtered ? 'Servicios SaaS que coinciden' : 'Servicios SaaS'}</h2>
-                  <div className="grid grid--services">
-                    {result.services.map((service) => (
-                      <ServiceCard key={service.id} service={service} alternatives={index.alternativesForService(service.id)} />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {result.alternatives.length ? (
-                <section className="section" aria-labelledby="alternativas-titulo">
-                  <h2 id="alternativas-titulo">{result.filtered ? 'Alternativas que coinciden' : 'Alternativas'}</h2>
-                  <div className="grid grid--alternatives">
-                    {result.alternatives.map((alternative) => (
-                      <AlternativeCard
-                        key={alternative.id}
-                        alternative={alternative}
-                        services={index.servicesForAlternative(alternative.id)}
-                      />
-                    ))}
-                  </div>
+                  <h2 id="servicios-titulo">{result.filtered ? 'Servicios que coinciden' : 'Elige un servicio'}</h2>
+                  <ServiceExplorer
+                    index={index}
+                    services={services}
+                    query={query}
+                    autoExpandId={result.filtered && services.length === 1 ? services[0].id : null}
+                  />
                 </section>
               ) : null}
             </>

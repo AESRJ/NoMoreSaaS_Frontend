@@ -1,9 +1,8 @@
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout.jsx';
 import { RequireAuth } from './components/RequireAuth.jsx';
 import { AlternativePage } from './pages/AlternativePage.jsx';
 import { CatalogPage } from './pages/CatalogPage.jsx';
-import { ComparePage } from './pages/ComparePage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { ProjectFormPage } from './pages/ProjectFormPage.jsx';
@@ -21,7 +20,8 @@ export default function App() {
         <Route index element={<CatalogPage />} />
         <Route path="saas/:id" element={<ServicePage />} />
         <Route path="alternativas/:id" element={<AlternativePage />} />
-        <Route path="comparar" element={<ComparePage />} />
+        {/* La comparación global se retiró (005): la ruta antigua vuelve al catálogo. */}
+        <Route path="comparar" element={<Navigate to="/" replace state={{ compareMoved: true }} />} />
         <Route path="entrar" element={<LoginPage />} />
         <Route path="registro" element={<RegisterPage />} />
         <Route element={<RequireAuth />}>

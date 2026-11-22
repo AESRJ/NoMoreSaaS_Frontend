@@ -1,19 +1,22 @@
 import { screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { alternative, catalogFixture } from './fixtures.js';
-import { renderApp, resetSelection } from './helpers.jsx';
+import { renderApp } from './helpers.jsx';
 
-beforeEach(() => resetSelection());
+async function openFromExplorer(user, service, name) {
+  await user.click(await screen.findByRole('button', { name: new RegExp(`^${service}`) }));
+  await user.click(screen.getByRole('button', { name }));
+  await user.click(screen.getByRole('link', { name: `Ver ficha completa de ${name}` }));
+}
 
 function section(name) {
   return screen.getByRole('region', { name });
 }
 
 describe('US2: ficha de alternativa', () => {
-  it('se abre desde el catálogo y muestra todos los campos con fuentes y fechas', async () => {
+  it('se abre desde la comparativa del catálogo y muestra todos los campos con fuentes y fechas', async () => {
     const { user } = renderApp('/');
-    const alternatives = await screen.findByRole('region', { name: /^alternativas/i });
-    await user.click(within(alternatives).getByRole('link', { name: 'Archivero' }));
+    await openFromExplorer(user, 'Drive Nube', 'Archivero');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Archivero' })).toBeInTheDocument();
     expect(screen.getByText('Descripción de Archivero.')).toBeInTheDocument();
@@ -81,16 +84,13 @@ describe('US2: ficha de alternativa', () => {
     expect(within(section(/capacidades/i)).queryByText(/no verificado/i)).not.toBeInTheDocument();
   });
 
-  it('distingue de forma visible una licencia source-available, también en la tarjeta del catálogo', async () => {
+  it('distingue de forma visible una licencia source-available en la ficha', async () => {
     const data = catalogFixture();
     data.alternatives[0] = {
       ...alternative('archivero', 'Archivero'),
       license: { label: 'BSL 1.1', url: 'https://archivero.example.org/license', classification: 'source-available' },
     };
-    const { user } = renderApp('/', { data });
-    const alternatives = await screen.findByRole('region', { name: /^alternativas/i });
-    expect(within(alternatives).getByText('BSL 1.1 · Código disponible (no open source)')).toBeInTheDocument();
-    await user.click(within(alternatives).getByRole('link', { name: 'Archivero' }));
+    renderApp('/alternativas/archivero', { data });
     await screen.findByRole('heading', { level: 1, name: 'Archivero' });
     expect(within(section(/licencia/i)).getByText('Código disponible (no open source)')).toBeInTheDocument();
   });

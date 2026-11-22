@@ -4,27 +4,72 @@
     {
       "id": "google-drive",
       "name": "Google Drive",
-      "description": "Almacenamiento de archivos en la nube con sincronización entre dispositivos y uso compartido."
+      "description": "Almacenamiento de archivos en la nube con sincronización entre dispositivos y uso compartido.",
+      "officialUrl": "https://workspace.google.com/products/drive/",
+      "sources": [
+        {
+          "url": "https://workspace.google.com/products/drive/",
+          "checkedAt": "2026-11-22",
+          "kind": "official",
+          "note": "Página oficial de Google Workspace; presenta Drive como almacenamiento en la nube para compartir archivos."
+        }
+      ]
     },
     {
       "id": "google-photos",
       "name": "Google Fotos",
-      "description": "Copia de seguridad, organización y búsqueda de fotos y vídeos desde el móvil y la web."
+      "description": "Copia de seguridad, organización y búsqueda de fotos y vídeos desde el móvil y la web.",
+      "officialUrl": "https://www.google.com/photos/about/",
+      "sources": [
+        {
+          "url": "https://www.google.com/photos/about/",
+          "checkedAt": "2026-11-22",
+          "kind": "official",
+          "note": "Página oficial de Google Fotos; describe la copia de seguridad, organización y búsqueda de fotos y sus opciones de almacenamiento en la nube de Google."
+        }
+      ]
     },
     {
       "id": "slack",
       "name": "Slack",
-      "description": "Mensajería de equipo alojada con canales, mensajes directos, llamadas e integraciones."
+      "description": "Mensajería de equipo alojada con canales, mensajes directos, llamadas e integraciones.",
+      "officialUrl": "https://slack.com/",
+      "sources": [
+        {
+          "url": "https://slack.com/",
+          "checkedAt": "2026-11-22",
+          "kind": "official",
+          "note": "Página oficial de Slack Technologies (empresa de Salesforce); presenta Slack como plataforma para conectar equipos."
+        }
+      ]
     },
     {
       "id": "tailscale",
       "name": "Tailscale",
-      "description": "Red privada gestionada entre dispositivos basada en WireGuard, con coordinación de claves, control de acceso y travesía de NAT a cargo del proveedor."
+      "description": "Red privada gestionada entre dispositivos basada en WireGuard, con coordinación de claves, control de acceso y travesía de NAT a cargo del proveedor.",
+      "officialUrl": "https://tailscale.com/",
+      "sources": [
+        {
+          "url": "https://tailscale.com/kb/1151/what-is-tailscale",
+          "checkedAt": "2026-11-22",
+          "kind": "official",
+          "note": "Documentación oficial «What is Tailscale?»; lo describe como plataforma de conectividad basada en identidad que requiere crear una cuenta en Tailscale e instalar su cliente."
+        }
+      ]
     },
     {
       "id": "notion",
       "name": "Notion",
-      "description": "Espacio de trabajo alojado para documentos, wikis y bases de conocimiento de equipo."
+      "description": "Espacio de trabajo alojado para documentos, wikis y bases de conocimiento de equipo.",
+      "officialUrl": "https://www.notion.com/",
+      "sources": [
+        {
+          "url": "https://www.notion.com/",
+          "checkedAt": "2026-11-22",
+          "kind": "official",
+          "note": "Página oficial de Notion Labs; presenta Notion como espacio de trabajo para equipos."
+        }
+      ]
     }
   ],
   "alternatives": [

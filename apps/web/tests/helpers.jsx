@@ -7,16 +7,11 @@ import { createCatalogResource } from '../src/api/catalog.js';
 import { CatalogProvider } from '../src/hooks/useCatalog.js';
 import { ProjectsProvider } from '../src/api/projects.js';
 import { AuthProvider, createAuthStore } from '../src/store/auth.js';
-import { useComparison } from '../src/store/comparison.js';
 import { catalogFixture } from './fixtures.js';
 
 function LocationProbe() {
   const location = useLocation();
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
-}
-
-export function resetSelection(ids = []) {
-  useComparison.setState({ ids, notice: null });
 }
 
 /** Cliente de auth simulado: visitante anónimo salvo que se sustituyan métodos. */

@@ -1,5 +1,5 @@
 // Cliente de lectura del catálogo y caché compartida por sesión.
-// El catálogo vive aquí, no en Zustand: Zustand solo guarda IDs seleccionados.
+// El catálogo vive aquí, no en Zustand.
 
 export class CatalogLoadError extends Error {
   /** @param {'network' | 'http' | 'invalid'} kind */

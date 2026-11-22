@@ -82,6 +82,33 @@ describe('validateCatalog: Service', () => {
     expect(problemsOf(data).some((p) => p.startsWith(path))).toBe(true);
   });
 
+  it('acepta officialUrl y fuentes oficiales opcionales; sin ellas sigue siendo válido', () => {
+    const data = validCatalog();
+    data.services[1] = {
+      ...data.services[1],
+      officialUrl: 'https://alfa.example.org/',
+      sources: [{ url: 'https://alfa.example.org/producto', checkedAt: TODAY, kind: 'official', note: 'Página oficial del producto.' }],
+    };
+    const catalog = validate(data);
+    expect(catalog.services.find((s) => s.id === data.services[1].id).sources).toHaveLength(1);
+    expect(() => validate(validCatalog())).not.toThrow();
+  });
+
+  it.each([
+    ['officialUrl HTTP', { officialUrl: 'http://alfa.example.org/' }, '.officialUrl'],
+    ['officialUrl no URL', { officialUrl: 'javascript:alert(1)' }, '.officialUrl'],
+    ['lista vacía', { sources: [] }, '.sources'],
+    ['más de 8 fuentes', { sources: Array.from({ length: 9 }, () => ({ url: 'https://a.example.org/', checkedAt: TODAY, kind: 'official', note: 'n' })) }, '.sources'],
+    ['fuente HTTP', { sources: [{ url: 'http://a.example.org/', checkedAt: TODAY, kind: 'official', note: 'n' }] }, '.sources[0].url'],
+    ['fecha futura', { sources: [{ url: 'https://a.example.org/', checkedAt: '2026-11-21', kind: 'official', note: 'n' }] }, '.sources[0].checkedAt'],
+    ['tipo editorial', { sources: [{ url: 'https://a.example.org/', checkedAt: TODAY, kind: 'editorial', note: 'n' }] }, '.sources[0].kind'],
+    ['sin nota', { sources: [{ url: 'https://a.example.org/', checkedAt: TODAY, kind: 'official' }] }, '.sources[0].note'],
+  ])('rechaza metadatos de servicio: %s', (_label, overrides, suffix) => {
+    const data = validCatalog();
+    data.services[1] = { ...data.services[1], ...overrides };
+    expect(problemsOf(data).some((p) => p.startsWith(`services[1]${suffix}`))).toBe(true);
+  });
+
   it('rechaza IDs de servicio duplicados', () => {
     const data = validCatalog();
     data.services.push({ id: 'alfa', name: 'Copia', description: 'x' });
@@ -239,6 +266,10 @@ describe('seed publicado', () => {
       expect(byId[id].license.classification).toBe('open-source');
     }
     for (const alt of catalog.alternatives) expect(alt.sources.length).toBeGreaterThan(0);
+    for (const service of catalog.services) {
+      expect(service.officialUrl).toMatch(/^https:\/\//);
+      expect(service.sources.length).toBeGreaterThan(0);
+    }
   });
 
   it('el seed vigente ya no ofrece GitHub, Gitea ni Forgejo', async () => {

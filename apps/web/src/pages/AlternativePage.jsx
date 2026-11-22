@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { ExternalLink } from '../components/ExternalLink.jsx';
 import { Icon } from '../components/Icon.jsx';
-import { SelectButton } from '../components/SelectButton.jsx';
 import { SourceList } from '../components/SourceList.jsx';
 import { CatalogGate, NotFoundContent } from '../components/StatusViews.jsx';
 import { VerificationNote } from '../components/Verification.jsx';
@@ -52,9 +51,6 @@ export function AlternativePage() {
                   <span className="tag">Alternativa autoalojable</span>
                   <span>{`Última revisión de fuentes: ${formatDate(latest)}`}</span>
                 </p>
-              </div>
-              <div className="detail__actions">
-                <SelectButton alternative={alternative} />
               </div>
             </header>
 

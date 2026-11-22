@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthRequestError } from '../src/api/auth.js';
 import { getWorkflow, saveProfile } from '../src/api/workflow.js';
 import { clearProjectDraft, saveProjectDraft } from '../src/store/projectDraft.js';
-import { anonymousAuthClient, emptyProjectsClient, renderApp, resetSelection } from './helpers.jsx';
+import { anonymousAuthClient, emptyProjectsClient, renderApp } from './helpers.jsx';
 
 // Recorrido /proyectos/:id/flujo con cliente de proyectos simulado: lógica de
 // UI (estados, errores, carreras, portapapeles). La integración real con la
@@ -126,7 +126,6 @@ const open = (view, projectsClient, authClient = signedIn()) => renderApp(`/proy
 const location = () => screen.getByTestId('location').textContent;
 
 beforeEach(() => {
-  resetSelection();
   clearProjectDraft();
 });
 afterEach(() => vi.unstubAllGlobals());

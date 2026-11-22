@@ -1,9 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { HERO_IMAGE_SRC } from '../src/pages/CatalogPage.jsx';
-import { renderApp, resetSelection } from './helpers.jsx';
-
-beforeEach(() => resetSelection());
+import { renderApp } from './helpers.jsx';
 
 describe('portada', () => {
   it('muestra la computadora central de Higgsfield con texto alternativo y mantiene la búsqueda', async () => {
