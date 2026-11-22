@@ -1,12 +1,7 @@
 # Estado actual
 
-MVP-CATALOGO implementada por Claude y revisada por Codex. Entrega closed; 17 tareas completas. Ver impl_MVP-CATALOGO.md, security_MVP-CATALOGO.md y review_MVP-CATALOGO.md.
+MVP-IDENTIDAD aceptada por Codex; entrega003closed y T001-T006 completas. Codigo en feat/cuentas-proyectos. Catalogo anterior sigue publico y su entrega002 permanececerrada.
 
-Pruebas independientes: lint, 80 API + 56 web, build y 22 e2e correctas. Capturas en .local/screenshots. Repositorio de codigo separado del arnes maestro; tareas activas aqui, plan maestro en AESRJ/NoMoreSas.
+Verificacion independiente:lint,213API,150web,build y30e2e oficiales correctos; clon sin puntero local, verificador0036/6 y00217/17, limites de ruta y reinicio realAPI a360/1280 comprobados. Informes impl/security/review_MVP-IDENTIDAD.md. No se inicio otro incremento.
 
-El usuario pide trabajo automatico dentro del alcance; no reabrir ni construir futuras funciones sin un nuevo plan. Codigo publicado en main de AESRJ/NoMoreSaaS_Frontend tras revision de Codex y la instruccion de trabajo automatico del usuario. No hay despliegue de produccion. Para ver la aplicacion ejecutar pnpm dev; API 127.0.0.1:3001, web 127.0.0.1:5173. Seleccion se reinicia al recargar, segun diseno.
-
-
-## 2026-11-21: MVP-IDENTIDAD
-
-Entrega003 ready, seis tareas secuenciales, ninguna implementada aun. Spec/plan/modelo/contratos en .project/specs/003-cuentas-proyectos. Claude implementa solo la tarea indicada, Codex revisa y crea commit por tarea aproximadamente cada20min. Sin push. Ver ADR0005 en arnes maestro.
+Preview local http://127.0.0.1:5573 y API3301; .env/DB propios ignorados, sin usuarios sembrados. Pruebas finales usaron API3501/WEB5773 y DB temporal, sin afectar preview/datos de desarrollo. Sin push ni despliegue. Codex planifica/revisa; Claude construye; siguiente funcionalidad requiere nueva entrega ready.

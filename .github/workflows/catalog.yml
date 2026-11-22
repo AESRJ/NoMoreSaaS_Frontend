@@ -27,6 +27,10 @@ jobs:
       - name: Instalar dependencias (lockfile congelado)
         run: pnpm install --frozen-lockfile
 
+      # Sin .specify/feature.json (ignorado) usa la referencia versionada de la entrega actual.
+      - name: Verificador de la entrega
+        run: python3 tools/check_handoff.py
+
       - name: Lint
         run: pnpm lint
 
@@ -39,5 +43,6 @@ jobs:
       - name: Instalar Chromium de Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Pruebas e2e con API y web reales
+      # DB SQLite y secreto temporales propios de la ejecucion (tests/e2e/api-test-env.js).
+      - name: Pruebas e2e con API, DB temporal y web reales
         run: pnpm test:e2e

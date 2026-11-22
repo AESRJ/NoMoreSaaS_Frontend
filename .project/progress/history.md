@@ -21,3 +21,15 @@ Revision independiente: lint, 80 pruebas API, 56 web, build y 22 e2e correctas. 
 ## Integracion y publicacion automatica
 
 Tras la instruccion de trabajo automatico del usuario, Codex verifico cuenta AESRJ, arbol limpio y remoto aun vacio. Integro por fast-forward en main y publico el incremento revisado 969baf1, sin force y sin despliegue. git ls-remote y HEAD coinciden. La revision y los commits de producto siguen atribuidos a AESRJ con asistencia de Claude/Codex documentada. La CI remota se verifica aparte. Preview localhost iniciado y salud/HTTP comprobados.
+
+## 2026-11-22 · Claude Code · MVP-IDENTIDAD T006
+
+T006 implementada, pendiente de revision de Codex: e2e de identidad con la API real (8 casos en 360/1280), aislamiento de CATALOG_PATH en e2e, lectura de puertos del .env raiz en Vite sin exponer secretos, verificador de entrega portable (puntero local o identity-source.json; 002 con --handoff) y CI, README, verification y revision de seguridad breve. Lint 0, API 213, web 149, build OK, e2e 30/30 solo en puertos alternativos (3301 ocupado por un proceso ajeno, no detenido), init.cmd 6/6. Se crearon .env y la DB local por defecto, ignorados y sin usuarios. Sin commit, push ni cierre de entrega.
+
+## 2026-11-22 · Claude Code · MVP-IDENTIDAD T006 ronda 2
+
+Se aisla `vite-config.test.js` de los puertos heredados con vi.stubEnv/unstubAllEnvs (sin cambios de produccion). Comandos oficiales con API_PORT=3501/WEB_PORT=5773 en el entorno del proceso: lint 0, test web 150 y API 213, build OK, `pnpm test:e2e` 30/30. Esto supera la limitacion anterior: 3301 lo ocupaba el preview de Codex. Sin commit, push ni cierre.
+
+## 2026-11-22 - Revision y cierre003 por Codex
+
+T001-T006 aceptadas tras revision independiente:lint,213API,150web,build y30e2e correctos, verificador actual/clon limpio y reinicio realAPI a360/1280. Entrega003closed; MVP-IDENTIDADdone. Cuota deClaude restablecida y correcciones terminadas; sin sustituirconstructor ni publicar. Evidencia:review_MVP-IDENTIDAD.md.

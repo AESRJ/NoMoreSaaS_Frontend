@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Configuración de la API solo para la ejecución de Playwright (no es una spec):
 // cada ejecución crea su propio directorio temporal con una DB nueva, un
@@ -44,11 +45,16 @@ function runDir() {
   return dir;
 }
 
-/** Variables exclusivas del proceso API de prueba. */
+// Seed canónico publicado: misma ruta absoluta que DEFAULT_CATALOG_PATH de la API,
+// de modo que un CATALOG_PATH del .env de desarrollo nunca entra en las pruebas.
+export const CANONICAL_CATALOG_PATH = fileURLToPath(new URL('../../apps/api/data/catalog.json', import.meta.url));
+
+/** Variables exclusivas del proceso API de prueba (prevalecen sobre el .env local). */
 export function createApiTestEnv({ webUrl }) {
   return {
     DATABASE_PATH: join(runDir(), 'api.sqlite'),
     SESSION_SECRET: randomBytes(32).toString('hex'),
     APP_ORIGIN: webUrl,
+    CATALOG_PATH: CANONICAL_CATALOG_PATH,
   };
 }
