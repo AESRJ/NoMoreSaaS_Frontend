@@ -6,11 +6,11 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createAuth } from '../src/auth.js';
-import { validateCatalog } from '../src/catalog.js';
+import { DEFAULT_CATALOG_PATH, loadCatalog, validateCatalog } from '../src/catalog.js';
 import { migrate, openDatabase } from '../src/db.js';
 import { PROJECT_QUOTA, createProjects } from '../src/projects.js';
 import { startServer } from '../src/server.js';
-import { validCatalog } from './fixtures.js';
+import { validAlternative, validCatalog } from './fixtures.js';
 
 // Cada prueba usa su propio archivo SQLite temporal y un reloj inyectado.
 // El hasher Argon2 real se cubre en auth.test.js; aquí se usa uno determinista
@@ -507,6 +507,41 @@ describe('persistencia y catálogo cambiante', () => {
     // Reenviarla en una selección nueva se rechaza; reemplazarla funciona.
     expectError(await patch({ alternativeIds: ['otra', 'cuarta'] }), 400, 'VALIDATION_ERROR');
     expect((await patch({ alternativeIds: ['otra'] })).body.project.alternatives).toEqual([{ id: 'otra', name: 'Otra', available: true }]);
+  });
+
+  it('seed vigente: un proyecto histórico con Gitea/Forgejo se conserva como no disponible', async () => {
+    const path = join(dir, 'historic.sqlite');
+    // Catálogo anterior (fixture) con los IDs retirados en 004.
+    const old = validCatalog();
+    old.alternatives.push(validAlternative({ id: 'gitea', name: 'Gitea' }), validAlternative({ id: 'forgejo', name: 'Forgejo' }));
+    old.relations.push({ serviceId: 'zeta', alternativeId: 'gitea', coverage: 'x' }, { serviceId: 'zeta', alternativeId: 'forgejo', coverage: 'x' });
+    const first = build({ path, catalogData: validateCatalog(old, { today: '2026-11-20' }) });
+    const ana = await signUp(first.app, 'ana@example.com');
+    const created = (await createProject(ana, { ...VALID, alternativeIds: ['gitea', 'forgejo'] })).body.project;
+    first.auth.close();
+    first.db.close();
+
+    const seed = await loadCatalog(DEFAULT_CATALOG_PATH, { requireSeedCoverage: true });
+    const second = build({ path, fresh: false, catalogData: seed });
+    const res = await request(second.app).get(`/api/projects/${created.id}`).set('Cookie', ana.cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.project.name).toBe(created.name);
+    expect(res.body.project.alternatives).toEqual([
+      { id: 'gitea', name: null, available: false },
+      { id: 'forgejo', name: null, available: false },
+    ]);
+    const patch = await request(second.app)
+      .patch(`/api/projects/${created.id}`)
+      .set('Cookie', ana.cookie)
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', ana.token)
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ alternativeIds: ['wireguard', 'outline'] }));
+    expect(patch.status).toBe(200);
+    expect(patch.body.project.alternatives).toEqual([
+      { id: 'wireguard', name: 'WireGuard', available: true },
+      { id: 'outline', name: 'Outline', available: true },
+    ]);
   });
 });
 

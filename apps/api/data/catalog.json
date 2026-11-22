@@ -2,11 +2,6 @@
   "schemaVersion": 1,
   "services": [
     {
-      "id": "github",
-      "name": "GitHub",
-      "description": "Plataforma alojada para repositorios Git con revisión de código, incidencias, integración continua y registro de paquetes."
-    },
-    {
       "id": "google-drive",
       "name": "Google Drive",
       "description": "Almacenamiento de archivos en la nube con sincronización entre dispositivos y uso compartido."
@@ -15,6 +10,21 @@
       "id": "google-photos",
       "name": "Google Fotos",
       "description": "Copia de seguridad, organización y búsqueda de fotos y vídeos desde el móvil y la web."
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "description": "Mensajería de equipo alojada con canales, mensajes directos, llamadas e integraciones."
+    },
+    {
+      "id": "tailscale",
+      "name": "Tailscale",
+      "description": "Red privada gestionada entre dispositivos basada en WireGuard, con coordinación de claves, control de acceso y travesía de NAT a cargo del proveedor."
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "description": "Espacio de trabajo alojado para documentos, wikis y bases de conocimiento de equipo."
     }
   ],
   "alternatives": [
@@ -158,179 +168,221 @@
       ]
     },
     {
-      "id": "gitea",
-      "name": "Gitea",
-      "description": "Servicio autoalojable todo en uno para desarrollo de software: alojamiento Git, revisión de código, colaboración, registro de paquetes y CI/CD.",
+      "id": "matrix-synapse",
+      "name": "Matrix (Synapse)",
+      "description": "Matrix es un protocolo abierto de comunicación descentralizada y federada; Synapse es la implementación de servidor (homeserver) de Matrix mantenida por Element. Se usa con clientes Matrix compatibles.",
       "capabilities": [
-        "Alojamiento de repositorios Git con ramas, etiquetas, hooks y Git LFS.",
-        "Revisión de código con flujo de Pull Request y AGit.",
-        "Incidencias con etiquetas, hitos, asignaciones, dependencias, seguimiento de tiempo y tableros kanban.",
-        "Gitea Actions: CI/CD con flujos YAML descritos como compatibles con GitHub Actions.",
-        "Registro de paquetes de más de 20 tipos (p. ej. Container, npm, Maven, PyPI, NuGet).",
-        "Wiki, webhooks, API, integración LDAP/AD y autenticación de dos factores."
+        "Mensajería instantánea en salas y mensajes directos mediante el protocolo abierto Matrix.",
+        "Federación con otros servidores Matrix según la especificación.",
+        "Llamadas de voz y vídeo (VoIP) definidas por la especificación Matrix; requieren un servidor TURN para funcionar de forma fiable.",
+        "Instalación mediante imagen Docker oficial, paquetes Debian/Ubuntu de Matrix.org (solo amd64), paquetes de varias distribuciones o módulo Python desde PyPI."
       ],
       "limitations": [
-        "La tabla comparativa oficial marca como no soportadas, entre otras, incidencias confidenciales, creación de incidencias por correo, subgrupos y resolución de conflictos de fusión.",
-        "Proyectos y búsqueda global de incidencias figuran con soporte parcial en la comparativa oficial.",
-        "Funciones como SAML SSO, registros de auditoría y soporte con SLA se ofrecen en la edición Enterprise, no en la edición open source.",
-        "La documentación advierte que convertir de un tipo de base de datos a otro no está bien probado y que SQLite no escala.",
-        "La compatibilidad con GitHub Actions se describe como cercana, no idéntica."
+        "Matrix es un protocolo, no una aplicación: Synapse solo es el servidor y se necesita un cliente Matrix aparte.",
+        "El server_name elegido al instalar no puede cambiarse después.",
+        "Para cualquier uso práctico las API deben servirse por HTTPS, normalmente con un proxy inverso.",
+        "SQLite solo es aceptable para pruebas; en producción la documentación indica PostgreSQL.",
+        "No se admite oficialmente ejecutar Synapse de forma nativa en Windows; se recomienda WSL.",
+        "Element no ofrece soporte sin una suscripción."
       ],
       "license": {
-        "label": "MIT",
-        "url": "https://github.com/go-gitea/gitea/blob/main/LICENSE",
+        "label": "GNU AGPL v3 (o licencia comercial de Element)",
+        "url": "https://github.com/element-hq/synapse#copyright-and-licensing",
         "classification": "open-source"
       },
       "difficulty": {
-        "level": "intermediate",
-        "explanation": "Se distribuye como binario o contenedor y puede usar SQLite integrado, pero un uso real requiere configurar una cuenta de sistema dedicada, Git, una base de datos adecuada, copias de seguridad y acceso por HTTPS/SSH."
+        "level": "advanced",
+        "explanation": "Exige elegir un server_name definitivo, configurar PostgreSQL, HTTPS con proxy inverso y, para llamadas, un servidor TURN, además de mantener la federación y las actualizaciones."
       },
-      "hostingNotes": "Requisitos documentados: Git 2.0 o superior (Git LFS con Git ≥ 2.1.2). La documentación indica que «2 núcleos de CPU y 1 GB de RAM suelen ser suficientes para equipos/proyectos pequeños» y que una Raspberry Pi 3 basta para cargas pequeñas; no da cifras para despliegues mayores. Bases de datos: PostgreSQL ≥ 12, MySQL ≥ 8.0, MariaDB ≥ 10.4, SQLite integrado y MSSQL ≥ 2012 SP4. Recomienda ejecutarlo con una cuenta de sistema no root en sistemas UNIX. Versión de documentación consultada: 28.4.0.",
-      "officialUrl": "https://about.gitea.com/",
-      "documentationUrl": "https://docs.gitea.com/",
+      "hostingNotes": "Requisitos documentados: sistema compatible con POSIX (probado en Linux y macOS); Python 3.11 a 3.14 al instalar desde PyPI; PostgreSQL recomendado para casi todas las instalaciones (SQLite solo para pruebas); HTTPS con proxy inverso; servidor TURN para VoIP fiable. La documentación indica al menos 1 GB de RAM libre si se quiere unir a salas públicas grandes; no es un mínimo universal y no se publican cifras de CPU. Una máquina de 512 MB puede quedarse sin memoria al instalar dependencias.",
+      "officialUrl": "https://spec.matrix.org/latest/",
+      "documentationUrl": "https://element-hq.github.io/synapse/latest/",
       "sources": [
         {
-          "url": "https://docs.gitea.com/",
-          "checkedAt": "2026-11-20",
-          "supports": ["name", "description", "capabilities", "hostingNotes", "documentationUrl"],
+          "url": "https://spec.matrix.org/latest/",
+          "checkedAt": "2026-11-22",
+          "supports": ["name", "description", "capabilities", "officialUrl"],
           "kind": "official",
-          "note": "Página «What is Gitea?»: descripción, funciones y requisitos del sistema."
+          "note": "Especificación Matrix (v1.19): conjunto de API abiertas para comunicación descentralizada, mensajería, VoIP e IoT."
         },
         {
-          "url": "https://about.gitea.com/",
-          "checkedAt": "2026-11-20",
-          "supports": ["capabilities", "limitations", "officialUrl"],
+          "url": "https://element-hq.github.io/synapse/latest/setup/installation.html",
+          "checkedAt": "2026-11-22",
+          "supports": ["capabilities", "limitations", "hostingNotes", "documentationUrl"],
           "kind": "official",
-          "note": "Sitio oficial: funciones y diferenciación con la edición Enterprise."
+          "note": "Métodos de instalación, versiones de Python, PostgreSQL frente a SQLite, HTTPS, TURN, server_name inmutable, Windows no soportado y referencia de 1 GB para salas grandes."
         },
         {
-          "url": "https://docs.gitea.com/installation/comparison",
-          "checkedAt": "2026-11-20",
-          "supports": ["capabilities", "limitations"],
+          "url": "https://github.com/element-hq/synapse#copyright-and-licensing",
+          "checkedAt": "2026-11-22",
+          "supports": ["description", "limitations", "license"],
           "kind": "official",
-          "note": "Tabla comparativa oficial de funciones soportadas, parciales y no soportadas."
+          "note": "README oficial: homeserver Matrix mantenido por Element; doble licencia AGPL v3 o comercial de Element; sin soporte sin suscripción."
         },
         {
-          "url": "https://docs.gitea.com/installation/database-prep",
-          "checkedAt": "2026-11-20",
-          "supports": ["limitations", "hostingNotes"],
-          "kind": "official",
-          "note": "Bases de datos soportadas y advertencias sobre conversión de bases de datos y SQLite."
-        },
-        {
-          "url": "https://github.com/go-gitea/gitea/blob/main/LICENSE",
-          "checkedAt": "2026-11-20",
-          "supports": ["license"],
-          "kind": "official",
-          "note": "Texto de licencia MIT (Copyright The Gitea Authors y The Gogs Authors); el README del repositorio la identifica como MIT."
-        },
-        {
-          "url": "https://docs.gitea.com/installation/install-from-binary",
-          "checkedAt": "2026-11-20",
+          "url": "https://element-hq.github.io/synapse/latest/setup/installation.html",
+          "checkedAt": "2026-11-22",
           "supports": ["difficulty"],
           "kind": "editorial",
-          "note": "Evaluación editorial de NoMoreSaaS a partir de los pasos de instalación documentados; no es una afirmación de Gitea."
+          "note": "Evaluación editorial de NoMoreSaaS a partir de los componentes que la guía de instalación exige (PostgreSQL, HTTPS, TURN, server_name); no es una afirmación de Element."
         }
       ]
     },
     {
-      "id": "forgejo",
-      "name": "Forgejo",
-      "description": "Forja de software autoalojable y ligera centrada en seguridad, escalado, federación y privacidad: alojamiento Git con incidencias, pull requests, wikis y tableros.",
+      "id": "wireguard",
+      "name": "WireGuard",
+      "description": "Túnel VPN rápido y moderno con criptografía actual, integrado en el núcleo de Linux y disponible para Windows, macOS, BSD, iOS y Android.",
       "capabilities": [
-        "Alojamiento de repositorios Git con incidencias, pull requests, wikis y tableros kanban.",
-        "Forgejo Actions para integración continua.",
-        "Registro de paquetes para Container, npm, PyPI, Maven, Go y otros gestores.",
-        "Funciona con SQLite sin preparación adicional o con MySQL/MariaDB y PostgreSQL."
+        "Túnel VPN que encapsula paquetes IP sobre UDP entre pares identificados por claves públicas.",
+        "Instalación nativa en Windows, macOS, iOS, Android, numerosas distribuciones Linux y BSD.",
+        "Enrutamiento por claves (AllowedIPs) y puerto UDP configurable por interfaz.",
+        "Herramienta wg-quick para levantar y detener interfaces a partir de un archivo de configuración.",
+        "PersistentKeepalive opcional para mantener la conexión a través de NAT."
       ],
       "limitations": [
-        "La federación entre forjas mediante ActivityPub está en desarrollo (WIP), no disponible como función completa.",
-        "Es un fork independiente («hard fork») de Gitea desde principios de 2024; los códigos han divergido y no se garantiza compatibilidad entre ambos.",
-        "Al migrar desde Gitea hay que conservar el nombre del binario gitea porque los hooks de Git lo referencian."
+        "No es un servicio gestionado: claves, pares, rutas y puertos se configuran y distribuyen manualmente.",
+        "No admite túneles sobre TCP; solo UDP.",
+        "No se centra en la ofuscación frente a inspección profunda de paquetes.",
+        "No es poscuántico por defecto.",
+        "Las fuentes consultadas no indican que atraviese CGNAT automáticamente: al menos un par necesita un puerto UDP accesible.",
+        "La documentación reconoce problemas en la detección de bucles de enrutamiento."
       ],
       "license": {
-        "label": "GPL-3.0-or-later (desde v9.0; versiones anteriores MIT)",
-        "url": "https://codeberg.org/forgejo/forgejo/src/branch/forgejo/LICENSE",
+        "label": "GPL v2 (wireguard-tools y componentes del núcleo)",
+        "url": "https://git.zx2c4.com/wireguard-tools/plain/COPYING",
         "classification": "open-source"
       },
       "difficulty": {
         "level": "intermediate",
-        "explanation": "Ofrece binario y contenedor con SQLite por defecto, pero requiere instalar Git y git-lfs, gestionar el servicio, copias de seguridad y acceso por HTTPS/SSH; elegir otra base de datos añade preparación."
+        "explanation": "La instalación es nativa y sencilla, pero exige generar y distribuir claves, definir direcciones y AllowedIPs por par, abrir un puerto UDP y resolver NAT sin la coordinación que ofrece un servicio gestionado."
       },
-      "hostingNotes": "Requisitos documentados: tener instalados git y git-lfs (sin versión mínima indicada). Bases de datos soportadas: MariaDB ≥ 10.6 (InnoDB), MySQL ≥ 8.4 (InnoDB), PostgreSQL ≥ 14 y SQLite; la documentación indica que SQLite es suficiente para al menos 10 usuarios. No se publican cifras de RAM ni CPU en las páginas consultadas: requisitos de hardware no verificados. Versión de documentación consultada: v17.0.2.",
-      "officialUrl": "https://forgejo.org/",
-      "documentationUrl": "https://forgejo.org/docs/latest/",
+      "hostingNotes": "Instalación nativa por sistema operativo según la página oficial de instalación (módulo del núcleo o herramientas en Linux, instaladores oficiales en Windows/macOS, tiendas de aplicaciones en móviles). Las fuentes consultadas no publican requisitos mínimos de RAM ni CPU: requisitos de hardware no verificados. Necesita un puerto UDP alcanzable (el ejemplo oficial usa 51820) y claves base64 por par.",
+      "officialUrl": "https://www.wireguard.com/",
+      "documentationUrl": "https://www.wireguard.com/quickstart/",
       "sources": [
         {
-          "url": "https://forgejo.org/",
-          "checkedAt": "2026-11-20",
-          "supports": ["name", "description", "officialUrl"],
+          "url": "https://www.wireguard.com/",
+          "checkedAt": "2026-11-22",
+          "supports": ["name", "description", "capabilities", "officialUrl"],
           "kind": "official",
-          "note": "Sitio oficial: «a self-hosted lightweight software forge»."
+          "note": "Sitio oficial: «fast, modern, secure VPN tunnel», UDP, enrutamiento por claves y plataformas."
         },
         {
-          "url": "https://codeberg.org/forgejo/forgejo",
-          "checkedAt": "2026-11-20",
-          "supports": ["description", "capabilities", "limitations", "license"],
-          "kind": "official",
-          "note": "README oficial: funciones, federación WIP y licencia GPL v3 o posterior desde v9.0 (MIT antes). El archivo LICENSE enlazado no pudo leerse de forma automatizada porque Codeberg devolvió una página antiscraping; la licencia se respalda con el README."
-        },
-        {
-          "url": "https://forgejo.org/docs/latest/",
-          "checkedAt": "2026-11-20",
-          "supports": ["capabilities", "documentationUrl"],
-          "kind": "official",
-          "note": "Documentación v17.0: pull requests, incidencias y Forgejo Actions."
-        },
-        {
-          "url": "https://forgejo.org/docs/latest/user/packages/",
-          "checkedAt": "2026-11-20",
-          "supports": ["capabilities"],
-          "kind": "official",
-          "note": "Registros de paquetes soportados."
-        },
-        {
-          "url": "https://forgejo.org/docs/latest/admin/installation/binary/",
-          "checkedAt": "2026-11-20",
+          "url": "https://www.wireguard.com/install/",
+          "checkedAt": "2026-11-22",
           "supports": ["capabilities", "hostingNotes"],
           "kind": "official",
-          "note": "Instalación con binario: git y git-lfs requeridos; SQLite suficiente para al menos 10 usuarios. No indica RAM ni CPU."
+          "note": "Instalación nativa por plataforma; no publica requisitos de RAM ni CPU."
         },
         {
-          "url": "https://forgejo.org/docs/latest/admin/installation/database-preparation/",
-          "checkedAt": "2026-11-20",
-          "supports": ["hostingNotes"],
+          "url": "https://www.wireguard.com/quickstart/",
+          "checkedAt": "2026-11-22",
+          "supports": ["capabilities", "limitations", "hostingNotes", "documentationUrl"],
           "kind": "official",
-          "note": "Bases de datos soportadas y versiones mínimas."
+          "note": "Generación de claves, pares, allowed-ips, listen-port, wg-quick y PersistentKeepalive."
         },
         {
-          "url": "https://forgejo.org/compare-to-gitea/",
-          "checkedAt": "2026-11-20",
+          "url": "https://www.wireguard.com/known-limitations/",
+          "checkedAt": "2026-11-22",
           "supports": ["limitations"],
           "kind": "official",
-          "note": "Relación con Gitea: soft fork desde 2022, hard fork desde principios de 2024; federación en desarrollo; nombre de binario al migrar."
+          "note": "Limitaciones conocidas: sin TCP, sin ofuscación DPI, no poscuántico por defecto, bucles de enrutamiento. No menciona travesía de CGNAT."
         },
         {
-          "url": "https://forgejo.org/docs/latest/admin/installation/binary/",
-          "checkedAt": "2026-11-20",
+          "url": "https://git.zx2c4.com/wireguard-tools/plain/COPYING",
+          "checkedAt": "2026-11-22",
+          "supports": ["license"],
+          "kind": "official",
+          "note": "Texto GNU GPL versión 2 de wireguard-tools; el sitio indica GPLv2 para los componentes del núcleo y otras licencias para otros proyectos."
+        },
+        {
+          "url": "https://www.wireguard.com/quickstart/",
+          "checkedAt": "2026-11-22",
           "supports": ["difficulty"],
           "kind": "editorial",
-          "note": "Evaluación editorial de NoMoreSaaS a partir de los pasos de instalación documentados; no es una afirmación de Forgejo."
+          "note": "Evaluación editorial de NoMoreSaaS a partir de la configuración manual de claves, pares y red que describe la guía; no es una afirmación de WireGuard."
+        }
+      ]
+    },
+    {
+      "id": "outline",
+      "name": "Outline",
+      "description": "Wiki y base de conocimiento de equipo con edición colaborativa en tiempo real, búsqueda e integraciones, autoalojable con Docker.",
+      "capabilities": [
+        "Editor con soporte Markdown, comandos con barra e incrustaciones.",
+        "Colaboración en tiempo real con comentarios e hilos.",
+        "Búsqueda en todo el espacio de trabajo.",
+        "Documentos compartidos de forma pública o privada; permisos de lectura/escritura, grupos e invitados.",
+        "Más de 20 integraciones y API abierta.",
+        "Almacenamiento de archivos local persistente o compatible con S3."
+      ],
+      "limitations": [
+        "La licencia es Business Source License 1.1, que el propio texto declara que no es una licencia open source.",
+        "La licencia prohíbe usarlo como «Document Service» comercial para terceros ajenos a empleados y contratistas.",
+        "Requiere un proveedor de autenticación compatible.",
+        "Requiere un dominio o subdominio dedicado.",
+        "No funciona en servidores Microsoft Windows.",
+        "Algunos servicios compatibles con S3 (p. ej. Cloudflare R2, Backblaze) figuran como no funcionales."
+      ],
+      "license": {
+        "label": "Business Source License 1.1 (cambia a Apache 2.0 en 2030-11-15)",
+        "url": "https://raw.githubusercontent.com/outline/outline/main/LICENSE",
+        "classification": "source-available"
+      },
+      "difficulty": {
+        "level": "advanced",
+        "explanation": "La instalación recomendada con Docker Compose requiere PostgreSQL, Redis, un dominio dedicado, HTTPS, un proveedor de autenticación externo o propio y variables de entorno con claves secretas."
+      },
+      "hostingNotes": "Requisitos documentados: sistema Unix compatible (imagen Docker basada en Alpine; no funciona en Windows Server); PostgreSQL 14 o superior; Redis 4 o superior; dominio o subdominio dedicado; proveedor de autenticación compatible. Memoria: mínimo 512 MB y 1 GB o más recomendado según el número de usuarios; la documentación no aclara si es el total del servidor y no incluye PostgreSQL/Redis. Sin cifras de CPU. El almacenamiento de archivos puede ser local (volumen persistente) o S3.",
+      "officialUrl": "https://www.getoutline.com/",
+      "documentationUrl": "https://docs.getoutline.com/s/hosting/doc/requirements-ULdYnwi4wG",
+      "sources": [
+        {
+          "url": "https://www.getoutline.com/",
+          "checkedAt": "2026-11-22",
+          "supports": ["name", "description", "capabilities", "officialUrl"],
+          "kind": "official",
+          "note": "Sitio oficial: «Team knowledge base & wiki», funciones de edición, colaboración, búsqueda, permisos e integraciones."
+        },
+        {
+          "url": "https://docs.getoutline.com/s/hosting/doc/requirements-ULdYnwi4wG",
+          "checkedAt": "2026-11-22",
+          "supports": ["limitations", "hostingNotes", "documentationUrl"],
+          "kind": "official",
+          "note": "Requisitos de alojamiento: Unix, PostgreSQL 14+, Redis 4+, dominio, proveedor de autenticación, 512 MB mínimo / 1 GB recomendado, no Windows."
+        },
+        {
+          "url": "https://docs.getoutline.com/s/hosting/doc/docker-7pfeLP5a8t",
+          "checkedAt": "2026-11-22",
+          "supports": ["description", "hostingNotes"],
+          "kind": "official",
+          "note": "Docker Compose como método recomendado con servicios outline, redis, postgres y proxy HTTPS."
+        },
+        {
+          "url": "https://docs.getoutline.com/s/hosting/doc/file-storage-N4M0T6Ypu7",
+          "checkedAt": "2026-11-22",
+          "supports": ["capabilities", "limitations", "hostingNotes"],
+          "kind": "official",
+          "note": "Almacenamiento local o S3 y lista de servicios compatibles y no compatibles."
+        },
+        {
+          "url": "https://raw.githubusercontent.com/outline/outline/main/LICENSE",
+          "checkedAt": "2026-11-22",
+          "supports": ["license", "limitations"],
+          "kind": "official",
+          "note": "Business Source License 1.1 (Outline 1.13.0): no es open source; restricción de Document Service; Change Date 2030-11-15 a Apache 2.0."
+        },
+        {
+          "url": "https://docs.getoutline.com/s/hosting/doc/docker-7pfeLP5a8t",
+          "checkedAt": "2026-11-22",
+          "supports": ["difficulty"],
+          "kind": "editorial",
+          "note": "Evaluación editorial de NoMoreSaaS a partir de los servicios y variables que exige la instalación documentada; no es una afirmación de Outline."
         }
       ]
     }
   ],
   "relations": [
-    {
-      "serviceId": "github",
-      "alternativeId": "gitea",
-      "coverage": "Cubre el alojamiento de repositorios Git, la revisión de código mediante pull requests, las incidencias, CI/CD con Gitea Actions y el registro de paquetes. No reproduce la red social ni el ecosistema público de GitHub, y la compatibilidad con GitHub Actions es cercana, no idéntica."
-    },
-    {
-      "serviceId": "github",
-      "alternativeId": "forgejo",
-      "coverage": "Cubre el alojamiento de repositorios Git, pull requests, incidencias, wikis, Forgejo Actions y paquetes. No reproduce la comunidad pública de GitHub; la federación entre forjas sigue en desarrollo."
-    },
     {
       "serviceId": "google-drive",
       "alternativeId": "nextcloud",
@@ -340,6 +392,21 @@
       "serviceId": "google-photos",
       "alternativeId": "immich",
       "coverage": "Cubre la copia automática desde el móvil, la organización en álbumes, la compartición y la búsqueda por caras, objetos y metadatos. Las copias de seguridad de la biblioteca son responsabilidad de quien aloja el servicio; no se garantiza paridad funcional con Google Fotos."
+    },
+    {
+      "serviceId": "slack",
+      "alternativeId": "matrix-synapse",
+      "coverage": "Cubre la mensajería en salas y directa con un servidor propio y federación abierta; las llamadas requieren TURN y la experiencia depende del cliente Matrix elegido. No reproduce el ecosistema de integraciones de Slack ni se garantiza paridad funcional."
+    },
+    {
+      "serviceId": "tailscale",
+      "alternativeId": "wireguard",
+      "coverage": "Cubre el túnel VPN cifrado entre dispositivos con la misma base criptográfica. No incluye la coordinación de claves, el control de acceso centralizado ni la travesía automática de NAT que gestiona Tailscale: todo se configura manualmente."
+    },
+    {
+      "serviceId": "notion",
+      "alternativeId": "outline",
+      "coverage": "Cubre la wiki y base de conocimiento de equipo con edición colaborativa, búsqueda y permisos. No pretende paridad completa con Notion (por ejemplo, sus bases de datos) y su licencia es source-available, no open source."
     }
   ]
 }

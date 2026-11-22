@@ -45,8 +45,8 @@ export function CatalogPage() {
       <header className="hero">
         <h1>Alternativas autoalojables a servicios SaaS</h1>
         <p className="hero__lead">
-          Encuentra opciones de código abierto para los servicios que usas, revisa sus capacidades, limitaciones y fuentes oficiales, y
-          compara hasta tres.
+          Encuentra alternativas autoalojadas para los servicios que usas, revisa sus capacidades, limitaciones, licencias y fuentes
+          oficiales, y compara hasta tres.
         </p>
         <p className="page-meta">
           <span className="tag">Catálogo público</span>

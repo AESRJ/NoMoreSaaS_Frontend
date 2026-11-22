@@ -17,7 +17,7 @@ export function SearchForm({ value, onChange, inputRef }) {
         name="q"
         autoComplete="off"
         spellCheck="false"
-        placeholder="Por ejemplo: Google Drive o Gitea"
+        placeholder="Por ejemplo: Google Drive o WireGuard"
         aria-describedby={hintId}
         value={value}
         onChange={(event) => onChange(event.target.value)}

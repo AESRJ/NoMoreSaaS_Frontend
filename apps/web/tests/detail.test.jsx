@@ -81,6 +81,20 @@ describe('US2: ficha de alternativa', () => {
     expect(within(section(/capacidades/i)).queryByText(/no verificado/i)).not.toBeInTheDocument();
   });
 
+  it('distingue de forma visible una licencia source-available, también en la tarjeta del catálogo', async () => {
+    const data = catalogFixture();
+    data.alternatives[0] = {
+      ...alternative('archivero', 'Archivero'),
+      license: { label: 'BSL 1.1', url: 'https://archivero.example.org/license', classification: 'source-available' },
+    };
+    const { user } = renderApp('/', { data });
+    const alternatives = await screen.findByRole('region', { name: /^alternativas/i });
+    expect(within(alternatives).getByText('BSL 1.1 · Código disponible (no open source)')).toBeInTheDocument();
+    await user.click(within(alternatives).getByRole('link', { name: 'Archivero' }));
+    await screen.findByRole('heading', { level: 1, name: 'Archivero' });
+    expect(within(section(/licencia/i)).getByText('Código disponible (no open source)')).toBeInTheDocument();
+  });
+
   it('muestra el contenido del catálogo como texto, nunca como HTML', async () => {
     const data = catalogFixture();
     data.alternatives[0] = {

@@ -9,6 +9,12 @@ export const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const ID_MAX = 80;
 
 const LICENSE_CLASSIFICATIONS = ['open-source', 'source-available', 'unknown'];
+// Publicables: código abierto o código disponible (p. ej. BSL) declarado como tal.
+// Una licencia sin clasificar no se publica.
+const PUBLISHABLE_LICENSES = ['open-source', 'source-available'];
+// Cobertura mínima del seed vigente (entrega 004): cinco SaaS y cinco alternativas.
+export const SEED_MIN_SERVICES = 5;
+export const SEED_MIN_ALTERNATIVES = 5;
 const DIFFICULTY_LEVELS = ['basic', 'intermediate', 'advanced', 'unknown'];
 const SOURCE_KINDS = ['official', 'editorial'];
 export const SUPPORTABLE_FIELDS = [
@@ -140,8 +146,8 @@ function checkAlternative(problems, path, alt, today) {
     checkHttpUrl(problems, `${path}.license.url`, alt.license.url);
     if (!LICENSE_CLASSIFICATIONS.includes(alt.license.classification)) {
       problems.push(`${path}.license.classification: valor no permitido`);
-    } else if (alt.license.classification !== 'open-source') {
-      problems.push(`${path}.license.classification: solo se publican alternativas open-source`);
+    } else if (!PUBLISHABLE_LICENSES.includes(alt.license.classification)) {
+      problems.push(`${path}.license.classification: solo se publican licencias open-source o source-available`);
     }
   }
 
@@ -236,7 +242,6 @@ export function validateCatalog(data, { today = new Date().toISOString().slice(0
   const pairs = new Set();
   const relatedServices = new Set();
   const relatedAlternatives = new Set();
-  const alternativesPerService = new Map();
   data.relations.forEach((relation, index) => {
     const path = `relations[${index}]`;
     if (!isPlainObject(relation)) {
@@ -251,7 +256,6 @@ export function validateCatalog(data, { today = new Date().toISOString().slice(0
     pairs.add(pair);
     relatedServices.add(relation.serviceId);
     relatedAlternatives.add(relation.alternativeId);
-    alternativesPerService.set(relation.serviceId, (alternativesPerService.get(relation.serviceId) ?? 0) + 1);
   });
 
   serviceIds.forEach((id) => {
@@ -261,11 +265,12 @@ export function validateCatalog(data, { today = new Date().toISOString().slice(0
     if (!relatedAlternatives.has(id)) problems.push(`alternativa "${id}": no tiene relaciones`);
   });
 
+  // La regla antigua «un servicio con dos alternativas» queda sustituida (004):
+  // no se exige inventar relaciones; comparar necesidades distintas sigue siendo válido.
   if (requireSeedCoverage) {
-    if (serviceIds.size < 3) problems.push('seed: se requieren al menos tres servicios');
-    if (alternativeIds.size < 4) problems.push('seed: se requieren al menos cuatro alternativas');
-    if (![...alternativesPerService.values()].some((count) => count >= 2)) {
-      problems.push('seed: al menos un servicio debe tener dos alternativas');
+    if (serviceIds.size < SEED_MIN_SERVICES) problems.push(`seed: se requieren al menos ${SEED_MIN_SERVICES} servicios`);
+    if (alternativeIds.size < SEED_MIN_ALTERNATIVES) {
+      problems.push(`seed: se requieren al menos ${SEED_MIN_ALTERNATIVES} alternativas`);
     }
   }
 

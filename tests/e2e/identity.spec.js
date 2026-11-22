@@ -107,16 +107,16 @@ test.describe('cuentas y proyectos (API real)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Nube familiar' })).toBeVisible();
     await expect(selection(page).getByRole('listitem')).toHaveText(['Immich', 'Nextcloud']);
 
-    // Editar nombre y selección (quitar Immich, añadir Gitea).
+    // Editar nombre y selección (quitar Immich, añadir Outline).
     await page.getByRole('link', { name: 'Editar' }).click();
     await expect(page.getByLabel('Nombre')).toHaveValue('Nube familiar');
     await page.getByLabel('Nombre').fill('Nube familiar editada');
     await page.getByRole('button', { name: 'Quitar Immich' }).click();
-    await page.getByRole('checkbox', { name: 'Gitea' }).check();
+    await page.getByRole('checkbox', { name: 'Outline' }).check();
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
     await expect(page.getByText('Cambios guardados.')).toBeVisible();
     await expect(page.getByRole('heading', { level: 1, name: 'Nube familiar editada' })).toBeVisible();
-    await expect(selection(page).getByRole('listitem')).toHaveText(['Nextcloud', 'Gitea']);
+    await expect(selection(page).getByRole('listitem')).toHaveText(['Nextcloud', 'Outline']);
 
     // Borrado: cancelar no cambia nada.
     await page.getByRole('button', { name: 'Eliminar' }).click();
@@ -150,7 +150,7 @@ test.describe('cuentas y proyectos (API real)', () => {
 
   test('dos identidades: B no ve, lee, edita ni borra proyectos de A (UI y cliente HTTP)', async ({ page, browser, baseURL }, testInfo) => {
     await register(page, emailFor(testInfo, 'ana'));
-    const idA = await createProject(page, { name: 'Privado de Ana', description: 'Solo Ana', alternatives: ['Forgejo'] });
+    const idA = await createProject(page, { name: 'Privado de Ana', description: 'Solo Ana', alternatives: ['WireGuard'] });
 
     const contextB = await browser.newContext({ baseURL, viewport: page.viewportSize(), locale: 'es-ES' });
     const pageB = await contextB.newPage();
@@ -214,12 +214,12 @@ test.describe('cuentas y proyectos (API real)', () => {
     await page.goto('/proyectos/nuevo');
     await page.getByLabel('Nombre').fill('Proyecto resistente');
     await page.getByLabel(/Descripción/).fill('No debe perderse');
-    await page.getByRole('checkbox', { name: 'Gitea' }).check();
+    await page.getByRole('checkbox', { name: 'Matrix (Synapse)' }).check();
     const submit = page.getByRole('button', { name: 'Crear proyecto' });
     const expectValuesKept = async () => {
       await expect(page.getByLabel('Nombre')).toHaveValue('Proyecto resistente');
       await expect(page.getByLabel(/Descripción/)).toHaveValue('No debe perderse');
-      await expect(page.getByRole('checkbox', { name: 'Gitea' })).toBeChecked();
+      await expect(page.getByRole('checkbox', { name: 'Matrix (Synapse)' })).toBeChecked();
     };
     let posts = 0;
     page.on('request', (request) => {

@@ -1,7 +1,7 @@
 {
   "master_repository": "https://github.com/AESRJ/NoMoreSas",
-  "source_directory": "specs/003-cuentas-proyectos",
-  "imported_at": "2026-11-21",
+  "source_directory": "specs/004-flujo-final",
+  "imported_at": "2026-11-22",
   "authority": "Execution checkboxes and evidence only in this checkout .project",
-  "master_commit": "0380194641abded75ec2e5b0a3aa797f53376066"
+  "master_commit": "49b1d99f1acab62a44f0927da796d411e7703fbc"
 }

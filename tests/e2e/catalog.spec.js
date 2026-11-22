@@ -38,8 +38,10 @@ test.describe('API real a través del proxy', () => {
     expect(await health.json()).toEqual({ status: 'ok' });
 
     const catalog = await (await request.get('/api/catalog')).json();
-    expect(catalog.services.length).toBeGreaterThanOrEqual(3);
-    expect(catalog.alternatives.length).toBeGreaterThanOrEqual(4);
+    expect(catalog.services.length).toBe(5);
+    expect(catalog.alternatives.map((a) => a.id).sort()).toEqual(['immich', 'matrix-synapse', 'nextcloud', 'outline', 'wireguard']);
+    const retired = await request.get('/api/alternatives/gitea');
+    expect(retired.status()).toBe(404);
 
     const invalid = await request.get('/api/alternatives/NO_VALIDO');
     expect(invalid.status()).toBe(400);
@@ -58,30 +60,30 @@ test.describe('US1–US3 con el seed real', () => {
 
     const search = page.getByRole('searchbox', { name: /buscar saas o alternativa/i });
     await tabTo(page, search);
-    await page.keyboard.type('  GITHUB ');
+    await page.keyboard.type('  SLACK ');
     await expect(page).toHaveURL(/q=/);
     const services = page.getByRole('region', { name: /servicios saas que coinciden/i });
-    await expect(services.getByRole('heading', { name: 'GitHub' })).toBeVisible();
+    await expect(services.getByRole('heading', { name: 'Slack' })).toBeVisible();
     await expect(page.getByRole('region', { name: /servicios saas/i }).getByRole('heading', { name: 'Google Drive' })).toHaveCount(0);
 
-    await tabTo(page, services.getByRole('link', { name: 'Gitea' }));
+    await tabTo(page, services.getByRole('link', { name: 'Matrix (Synapse)' }));
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/alternativas\/gitea$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Gitea' })).toBeVisible();
-    await expect(page.getByText(/última revisión de fuentes: 20 de noviembre de 2026/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/alternativas\/matrix-synapse$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Matrix (Synapse)' })).toBeVisible();
+    await expect(page.getByText(/última revisión de fuentes: 22 de noviembre de 2026/i)).toBeVisible();
 
-    const addGitea = page.getByRole('button', { name: 'Añadir Gitea a la comparación' });
-    await tabTo(page, addGitea);
+    const addMatrix = page.getByRole('button', { name: 'Añadir Matrix (Synapse) a la comparación' });
+    await tabTo(page, addMatrix);
     await page.keyboard.press('Space');
-    await expect(page.getByRole('button', { name: 'Quitar Gitea de la comparación' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Quitar Matrix (Synapse) de la comparación' })).toHaveAttribute('aria-pressed', 'true');
 
     await tabTo(page, page.getByRole('link', { name: /volver al catálogo/i }), 80);
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/$/);
     await tabTo(page, page.getByRole('searchbox'));
-    await page.keyboard.type('forgejo');
-    const addForgejo = page.getByRole('button', { name: 'Añadir Forgejo a la comparación' });
-    await tabTo(page, addForgejo);
+    await page.keyboard.type('outline');
+    const addOutline = page.getByRole('button', { name: 'Añadir Outline a la comparación' });
+    await tabTo(page, addOutline);
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('selection-count')).toHaveText('2 de 3');
 
@@ -89,17 +91,28 @@ test.describe('US1–US3 con el seed real', () => {
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/comparar$/);
     const table = page.getByRole('table');
-    await expect(table.getByRole('columnheader', { name: /gitea/i })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /forgejo/i })).toBeVisible();
-    await expect(page.getByText(/todas sustituyen a github/i)).toBeVisible();
-    await expect(page.getByText(/cubren necesidades distintas/i)).toHaveCount(0);
+    await expect(table.getByRole('columnheader', { name: /matrix/i })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: /outline/i })).toBeVisible();
+    await expect(table.getByText(/código disponible \(no open source\)/i)).toBeVisible();
+    await expect(page.getByText(/cubren necesidades distintas/i)).toBeVisible();
+  });
+
+  test('GitHub, Gitea y Forgejo ya no son opciones', async ({ page }) => {
+    for (const term of ['github', 'gitea', 'forgejo']) {
+      await page.goto(`/?q=${term}`);
+      await expect(page.getByRole('heading', { name: /sin resultados/i })).toBeVisible();
+    }
+    await page.goto('/alternativas/gitea');
+    await expect(page.getByRole('heading', { level: 1, name: /no encontramos esta alternativa/i })).toBeVisible();
   });
 
   test('cada SaaS inicial lleva a una ficha sin iniciar sesión', async ({ page }) => {
     for (const [service, alternative] of [
       ['Google Drive', 'Nextcloud'],
       ['Google Fotos', 'Immich'],
-      ['GitHub', 'Forgejo'],
+      ['Slack', 'Matrix (Synapse)'],
+      ['Tailscale', 'WireGuard'],
+      ['Notion', 'Outline'],
     ]) {
       await page.goto('/');
       await page.getByRole('region', { name: /^servicios saas$/i }).getByRole('link', { name: service, exact: true }).click();
@@ -135,8 +148,8 @@ test.describe('US1–US3 con el seed real', () => {
 
   test('límite de tres, quitar y limpiar', async ({ page }) => {
     await page.goto('/');
-    await addToComparison(page, 'Forgejo');
-    await addToComparison(page, 'Gitea');
+    await addToComparison(page, 'WireGuard');
+    await addToComparison(page, 'Outline');
     await addToComparison(page, 'Immich');
     await page.getByRole('button', { name: 'Añadir Nextcloud a la comparación' }).click();
     await expect(page.getByRole('alert')).toContainText(/máximo de 3/i);
@@ -153,7 +166,7 @@ test.describe('US1–US3 con el seed real', () => {
     await expect(page.getByRole('heading', { name: /sin resultados/i })).toBeVisible();
     await page.getByRole('button', { name: /restablecer búsqueda/i }).click();
     await expect(page.getByRole('searchbox')).toHaveValue('');
-    await expect(page.getByRole('region', { name: /^alternativas$/i }).getByRole('article')).toHaveCount(4);
+    await expect(page.getByRole('region', { name: /^alternativas$/i }).getByRole('article')).toHaveCount(5);
   });
 
   test('recursos inexistentes', async ({ page }) => {
@@ -210,7 +223,7 @@ test.describe('presentación responsive y capturas', () => {
     const width = page.viewportSize().width;
 
     await page.goto('/');
-    await expect(page.getByRole('region', { name: /^alternativas$/i }).getByRole('article')).toHaveCount(4);
+    await expect(page.getByRole('region', { name: /^alternativas$/i }).getByRole('article')).toHaveCount(5);
     await expectNoPageOverflow(page);
     await expect(page.getByRole('searchbox')).toBeVisible();
     await page.screenshot({ path: `${SCREENSHOT_DIR}catalogo-${width}.png`, fullPage: true });
@@ -221,14 +234,14 @@ test.describe('presentación responsive y capturas', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}ficha-${width}.png`, fullPage: true });
 
     await page.getByRole('link', { name: /volver al catálogo/i }).click();
-    await addToComparison(page, 'Forgejo');
-    await addToComparison(page, 'Gitea');
+    await addToComparison(page, 'Matrix (Synapse)');
+    await addToComparison(page, 'Outline');
     await addToComparison(page, 'Nextcloud');
     await page.getByRole('link', { name: /ver comparación/i }).click();
     const region = page.getByRole('region', { name: /tabla de comparación/i });
     await expect(region).toBeVisible();
     await expectNoPageOverflow(page);
-    for (const name of ['Forgejo', 'Gitea', 'Nextcloud']) {
+    for (const name of ['Matrix (Synapse)', 'Outline', 'Nextcloud']) {
       const button = page.getByRole('button', { name: `Quitar ${name} de la comparación` });
       await button.scrollIntoViewIfNeeded();
       await expect(button).toBeVisible();

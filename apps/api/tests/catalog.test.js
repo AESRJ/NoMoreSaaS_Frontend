@@ -23,7 +23,7 @@ function withAlternative(overrides) {
 
 describe('validateCatalog: estructura y orden', () => {
   it('acepta un catálogo válido, lo ordena por nombre y lo congela', () => {
-    const catalog = validate(validCatalog(), { requireSeedCoverage: true });
+    const catalog = validate(validCatalog());
     expect(catalog.services.map((s) => s.id)).toEqual(['alfa', 'beta', 'zeta']);
     expect(catalog.alternatives.map((a) => a.id)).toEqual(['alt-uno', 'beta-alt', 'cuarta', 'otra']);
     expect(catalog.relations.map((r) => r.serviceId)).toEqual(['alfa', 'alfa', 'beta', 'zeta']);
@@ -49,20 +49,21 @@ describe('validateCatalog: estructura y orden', () => {
     expect(problemsOf({ schemaVersion: 1, services: {}, alternatives: [], relations: [] })).toContain('services: debe ser una lista');
   });
 
-  it('exige cobertura mínima del seed cuando se solicita', () => {
-    // Cuatro servicios con una alternativa cada uno: ninguno tiene dos.
+  it('exige cobertura mínima del seed (5/5) sin requerir dos alternativas por servicio', () => {
+    // Cinco servicios con una alternativa cada uno: válido, no se inventan relaciones.
     const data = validCatalog();
-    data.services.push({ id: 'gamma', name: 'Gamma', description: 'Servicio G' });
+    data.services.push({ id: 'gamma', name: 'Gamma', description: 'Servicio G' }, { id: 'delta', name: 'Delta', description: 'Servicio D' });
+    data.alternatives.push(validAlternative({ id: 'quinta', name: 'Quinta' }));
     data.relations[2] = { serviceId: 'gamma', alternativeId: 'cuarta', coverage: 'x' };
-    const problems = problemsOf(data, { requireSeedCoverage: true });
-    expect(problems).toEqual(['seed: al menos un servicio debe tener dos alternativas']);
+    data.relations.push({ serviceId: 'delta', alternativeId: 'quinta', coverage: 'x' });
+    expect(() => validate(data, { requireSeedCoverage: true })).not.toThrow();
     const small = validCatalog();
     small.services = small.services.slice(1);
     small.relations = small.relations.filter((r) => r.serviceId !== 'zeta');
     small.alternatives = small.alternatives.filter((a) => a.id !== 'otra');
     const smallProblems = problemsOf(small, { requireSeedCoverage: true });
-    expect(smallProblems).toContain('seed: se requieren al menos tres servicios');
-    expect(smallProblems).toContain('seed: se requieren al menos cuatro alternativas');
+    expect(smallProblems).toContain('seed: se requieren al menos 5 servicios');
+    expect(smallProblems).toContain('seed: se requieren al menos 5 alternativas');
   });
 });
 
@@ -103,7 +104,7 @@ describe('validateCatalog: Alternative', () => {
     ['etiqueta de licencia vacía', { license: { label: '', url: 'https://e.org', classification: 'open-source' } }, 'alternatives[1].license.label'],
     ['URL de licencia javascript', { license: { label: 'MIT', url: 'javascript:alert(1)', classification: 'open-source' } }, 'alternatives[1].license.url'],
     ['clasificación desconocida', { license: { label: 'X', url: 'https://e.org', classification: 'libre' } }, 'alternatives[1].license.classification'],
-    ['licencia source-available', { license: { label: 'BSL', url: 'https://e.org', classification: 'source-available' } }, 'alternatives[1].license.classification'],
+    ['licencia sin clasificar', { license: { label: 'X', url: 'https://e.org', classification: 'unknown' } }, 'alternatives[1].license.classification'],
     ['dificultad con nivel desconocido', { difficulty: { level: 'easy', explanation: 'x' } }, 'alternatives[1].difficulty.level'],
     ['dificultad sin explicación', { difficulty: { level: 'basic', explanation: '' } }, 'alternatives[1].difficulty.explanation'],
     ['hostingNotes vacío', { hostingNotes: '' }, 'alternatives[1].hostingNotes'],
@@ -115,6 +116,11 @@ describe('validateCatalog: Alternative', () => {
     ['sin fuentes', { sources: [] }, 'alternatives[1].sources'],
   ])('rechaza %s', (_label, overrides, path) => {
     expect(problemsOf(withAlternative(overrides)).some((p) => p.startsWith(path))).toBe(true);
+  });
+
+  it('acepta licencias source-available declaradas como tales', () => {
+    const bsl = { license: { label: 'BSL 1.1', url: 'https://e.org', classification: 'source-available' } };
+    expect(() => validate(withAlternative(bsl))).not.toThrow();
   });
 
   it('acepta el nivel unknown de dificultad', () => {
@@ -215,13 +221,32 @@ describe('utilidades', () => {
 });
 
 describe('seed publicado', () => {
-  it('apps/api/data/catalog.json es válido y cubre el mínimo del seed', async () => {
+  it('apps/api/data/catalog.json es válido y publica las cinco alternativas vigentes', async () => {
     const catalog = await loadCatalog(DEFAULT_CATALOG_PATH, { requireSeedCoverage: true });
-    expect(catalog.services.length).toBeGreaterThanOrEqual(3);
-    expect(catalog.alternatives.length).toBeGreaterThanOrEqual(4);
-    for (const alt of catalog.alternatives) {
-      expect(alt.license.classification).toBe('open-source');
-      expect(alt.sources.length).toBeGreaterThan(0);
+    expect(catalog.alternatives.map((a) => a.id).sort()).toEqual(['immich', 'matrix-synapse', 'nextcloud', 'outline', 'wireguard']);
+    expect(catalog.services.map((s) => s.id).sort()).toEqual(['google-drive', 'google-photos', 'notion', 'slack', 'tailscale']);
+    const pairs = catalog.relations.map((r) => `${r.serviceId}>${r.alternativeId}`).sort();
+    expect(pairs).toEqual([
+      'google-drive>nextcloud',
+      'google-photos>immich',
+      'notion>outline',
+      'slack>matrix-synapse',
+      'tailscale>wireguard',
+    ]);
+    const byId = Object.fromEntries(catalog.alternatives.map((a) => [a.id, a]));
+    expect(byId.outline.license.classification).toBe('source-available');
+    for (const id of ['nextcloud', 'immich', 'matrix-synapse', 'wireguard']) {
+      expect(byId[id].license.classification).toBe('open-source');
+    }
+    for (const alt of catalog.alternatives) expect(alt.sources.length).toBeGreaterThan(0);
+  });
+
+  it('el seed vigente ya no ofrece GitHub, Gitea ni Forgejo', async () => {
+    const catalog = await loadCatalog(DEFAULT_CATALOG_PATH, { requireSeedCoverage: true });
+    const ids = [...catalog.services, ...catalog.alternatives].map((item) => item.id);
+    for (const retired of ['github', 'gitea', 'forgejo']) {
+      expect(ids).not.toContain(retired);
+      expect(findAlternative(catalog, retired)).toBeNull();
     }
   });
 
