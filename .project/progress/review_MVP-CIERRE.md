@@ -9,3 +9,6 @@ Verificación independiente: 101/101 pruebas API de catálogo/proyectos;32/32 Pl
 
 ## T003 aceptada
 24/24 evaluation/workflow correctos independientemente. Cálculo desglosado con carga/márgenes, datos oficiales separados y desconocidos/retirados pendientes. Fuente Immich contrastada: macOS desaconsejado igual que otros sistemas noLinux; Claude agregó advertencia/regresión solicitada. Migración002 del preview aplicada por Codex tras VACUUM INTO de respaldo local; cantidades de usuarios/proyectos intactas. Higgsfield Connected confirmado por CLI; dependencia autenticación resuelta, asset por generar enT006.
+
+## T004 aceptada
+13/13 plan pasan independientemente. Prueba HTTP con servidor real y SQLite temporal: registroA/B, perfil, evaluación, etapas/prompts, avance, reinicio real del proceso conserva sesión/perfil/avance, cambioequipo invalida y409, insuficiente/desconocido, rechazo ajeno/CSRF/campos inválidos y borrado correctos. Primer intento del script QA envió fingerprint de formato inválido en prueba ajena (400 esperado por validación); corregido fixture QA a64hex para comprobar404, sin modificar producto por Codex. Revisión de transacción/fingerprint/plantillas, sin ejecución remota.

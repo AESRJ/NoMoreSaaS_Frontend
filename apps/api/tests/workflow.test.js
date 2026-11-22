@@ -134,7 +134,8 @@ describe('PUT /api/projects/:id/profile', () => {
       profile: { projectId: id, ...PROFILE, revision: 1 },
       // El fixture no tiene reglas: evaluación pendiente con requisitos desconocidos (T003).
       evaluation: expect.objectContaining({ status: 'pending', rulesVersion: expect.any(String) }),
-      plan: null,
+      // Sin reglas ni plantillas para el fixture: plan bloqueado y sin pasos (T004).
+      plan: expect.objectContaining({ blocked: true, steps: [] }),
       progress: EMPTY_PROGRESS,
     });
     expectNoLeak(res);
