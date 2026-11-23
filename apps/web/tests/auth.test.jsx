@@ -596,7 +596,7 @@ describe('formulario de registro', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Crear cuenta' })).toBeInTheDocument();
     expect(emailInput()).toHaveAttribute('autocomplete', 'email');
     expect(passwordInput()).toHaveAttribute('autocomplete', 'new-password');
-    expect(passwordInput()).toHaveAccessibleDescription('Usa una frase de al menos 15 caracteres.');
+    expect(passwordInput()).toHaveAccessibleDescription('Usa al menos 8 caracteres.');
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
   });
 
@@ -615,15 +615,15 @@ describe('formulario de registro', () => {
     expect(within(banner()).getByText(`Cuenta creada. Has entrado como ${USER_A.email}.`)).toBeInTheDocument();
   });
 
-  it('rechaza localmente menos de 15 y más de 128 puntos Unicode', async () => {
+  it('rechaza localmente menos de 8 y más de 128 puntos Unicode', async () => {
     const client = anonymousAuthClient();
     const { user } = renderApp('/registro', { authClient: client });
     await user.type(await screen.findByLabelText('Correo'), USER_A.email);
     await user.click(passwordInput());
-    await user.paste('😀'.repeat(14));
+    await user.paste('😀'.repeat(7));
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(passwordInput()).toHaveAttribute('aria-invalid', 'true');
-    expect(passwordInput()).toHaveAccessibleDescription(/al menos 15 caracteres \(ahora tiene 14\)/);
+    expect(passwordInput()).toHaveAccessibleDescription(/al menos 8 caracteres \(ahora tiene 7\)/);
     expect(document.activeElement).toBe(passwordInput());
 
     await user.clear(passwordInput());

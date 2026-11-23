@@ -164,16 +164,16 @@ describe('contraseñas (Argon2id)', () => {
     expect(await pending).toBe(true);
   });
 
-  it('valida 15–128 puntos Unicode, no unidades UTF-16', () => {
-    expect(isValidPassword('a'.repeat(14))).toBe(false);
-    expect(isValidPassword('a'.repeat(15))).toBe(true);
+  it('valida 8–128 puntos Unicode, no unidades UTF-16', () => {
+    expect(isValidPassword('a'.repeat(7))).toBe(false);
+    expect(isValidPassword('a'.repeat(8))).toBe(true);
     expect(isValidPassword('a'.repeat(128))).toBe(true);
     expect(isValidPassword('a'.repeat(129))).toBe(false);
-    expect(countCodePoints('😀'.repeat(15))).toBe(15);
-    expect(isValidPassword('😀'.repeat(15))).toBe(true);
+    expect(countCodePoints('😀'.repeat(8))).toBe(8);
+    expect(isValidPassword('😀'.repeat(8))).toBe(true);
     expect(isValidPassword('😀'.repeat(65))).toBe(true); // 130 unidades UTF-16 pero 65 puntos
     expect(isValidPassword('😀'.repeat(129))).toBe(false);
-    expect(isValidPassword(' '.repeat(15))).toBe(true);
+    expect(isValidPassword(' '.repeat(8))).toBe(true);
     expect(isValidPassword(123456789012345)).toBe(false);
   });
 
@@ -360,7 +360,7 @@ describe('POST /api/auth/register', () => {
   it.each([
     ['correo inválido', { email: 'sin-arroba', password: PASSWORD }],
     ['correo no texto', { email: ['a@b.co'], password: PASSWORD }],
-    ['contraseña corta', { email: 'a@b.co', password: 'a'.repeat(14) }],
+    ['contraseña corta', { email: 'a@b.co', password: 'a'.repeat(7) }],
     ['contraseña larga', { email: 'a@b.co', password: 'a'.repeat(129) }],
     ['contraseña vacía', { email: 'a@b.co', password: '' }],
     ['contraseña no texto', { email: 'a@b.co', password: 123456789012345 }],

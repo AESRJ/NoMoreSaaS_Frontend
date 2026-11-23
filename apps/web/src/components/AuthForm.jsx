@@ -6,7 +6,7 @@ import { useAuth } from '../store/auth.js';
 // ([...texto].length), no en unidades UTF-16: por eso no se usa maxLength.
 export const EMAIL_MIN = 3;
 export const EMAIL_MAX = 254;
-export const PASSWORD_MIN = 15;
+export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 128;
 const EMAIL_PATTERN = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
 
@@ -180,7 +180,7 @@ export function AuthForm({ mode }) {
         />
         {mode === 'register' && (
           <p id={ids.passwordHint} className="field__hint">
-            Usa una frase de al menos {PASSWORD_MIN} caracteres.
+            Usa al menos {PASSWORD_MIN} caracteres.
           </p>
         )}
         {fieldErrors.password && (
