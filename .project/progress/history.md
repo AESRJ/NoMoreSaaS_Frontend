@@ -1,5 +1,9 @@
 # Bitacora
 
+## 2026-11-21 - Permisos de ejecucion local
+
+Codex verifico que NoMoreSaaS_Frontend ya es raiz escribible de esta sesion. Por solicitud del usuario, configuro `.claude/settings.local.json` (ignorado por Git) con acceptEdits y comandos exactos de verificacion para Bash/PowerShell, conservando NotebookLM. Detalle y limites en `.project/execution-permissions.md`. `init.cmd`: codigo 0, 17/17 completas. JSON comprobado por parseo local; no se lanzo Claude ni se verifico la carga efectiva en una nueva sesion. Sin cambios de producto, commits, push, despliegue ni modificaciones de otros repositorios. Se conservaron los cambios preexistentes de Impeccable. Entrega 002 sigue cerrada.
+
 Entorno aislado preparado por Codex para delegar la construccion a Claude. Snapshot del arnes maestro y rutas agrupadas en .project/. No se crea codigo de producto con Codex.
 
 ## 2026-11-20 · Claude Code · construccion MVP-CATALOGO
@@ -21,6 +25,12 @@ Revision independiente: lint, 80 pruebas API, 56 web, build y 22 e2e correctas. 
 ## Integracion y publicacion automatica
 
 Tras la instruccion de trabajo automatico del usuario, Codex verifico cuenta AESRJ, arbol limpio y remoto aun vacio. Integro por fast-forward en main y publico el incremento revisado 969baf1, sin force y sin despliegue. git ls-remote y HEAD coinciden. La revision y los commits de producto siguen atribuidos a AESRJ con asistencia de Claude/Codex documentada. La CI remota se verifica aparte. Preview localhost iniciado y salud/HTTP comprobados.
+
+
+## 2026-11-21 - Skill de diseño solicitada
+
+Se instala Impeccable 4.10.0 desde la revision b49177d, carpeta completa con referencias/scripts y licencia/NOTICE originales. CLAUDE.md integra su uso para futuras tareas visuales y frontend la precarga mediante skills. No se modifica UI, no se reabre la entrega cerrada del catalogo, no se activan hooks ni se instalan skills globales/Codex. Procedencia y hashes en .project/impeccable-install.json; comprobaciones de runtime se registran por separado.
+
 
 ## 2026-11-22 · Claude Code · MVP-IDENTIDAD T006
 
@@ -48,6 +58,9 @@ Codex registra círculos/árbol/comparativa en dashboard, eliminación de Altern
 
 ## 2026-11-22 — Síntesis de proyectos/equipo/seguridad
 Usuario confirma mantener manual; solicita componentes automáticos/importables, selector por servicio conocido en proyecto y evaluación/prompts más claros con seguridad. Codex amplía005selector y crea007borrador con investigación de APIsWeb/limitaciones, diagnóstico local read-only propuesto y seguridad por etapa (fuentes oficiales/OWASP). No inventario real recogido, ningún código de producto modificado, sin commit/push. Pendiente SDD completo/ADR/ready y capacidadClaude.
+
+## 2026-11-22 — Planificación final de revisión y Railway
+Codex formaliza005–008 con SpecKit templates/setup-plan/setup-tasks/prerequisites, investigaciónoficial delegada deGoogle/Railway y análisis decontratos/campos. Solo005ready/activa; otrasdraftencola.16tareas en total. RegistroOAuthGoogle explicado alusuario, configuraciónausente sin secretos impresos. Usuario confirmaRailwayconectado, operatividadherramientas noverificada; no crearecursos. SpikeSQLiteenmemoria para extraer credenciales yDROPcolumna viable, no migración deproducto ni datosreales modificados. CuotaClaudeúltimoaviso14:20; falta verificarreanudaciónprogramada. Cadencia20min respetar, no inferirrelajación. Sin código deproducto escrito porCodex ni push/despliegue.
 
 ## 2026-11-22 — Planificación final de revisión y Railway
 Codex formaliza005–008 con SpecKit templates/setup-plan/setup-tasks/prerequisites, investigaciónoficial delegada deGoogle/Railway y análisis decontratos/campos. Solo005ready/activa; otrasdraftencola.16tareas en total. RegistroOAuthGoogle explicado alusuario, configuraciónausente sin secretos impresos. Usuario confirmaRailwayconectado, operatividadherramientas noverificada; no crearecursos. SpikeSQLiteenmemoria para extraer credenciales yDROPcolumna viable, no migración deproducto ni datosreales modificados. CuotaClaudeúltimoaviso14:20; falta verificarreanudaciónprogramada. Cadencia20min respetar, no inferirrelajación. Sin código deproducto escrito porCodex ni push/despliegue.
@@ -90,6 +103,9 @@ isSessionCurrent síncrono; TTL + relectura de sesión + mutación + destroy del
 
 ## 2026-11-22 — Revisión006/T002 aceptada (Codex)
 Proveedor/config/rutas ySDK11.3.4fijado revisados; Googlevivo aún pendiente. HallazgoSC003de sesión duranteawait se reprodujo con4fallos y Claude reparó; segundoajuste eliminó cesión innecesaria despuésdecomprobarestado. Prueba de microtarea falló conawait y pasa sinél. Codexlint/156APIenfocadas/diffcheckPASS; Claude24OIDC/156enfocadasPASS yAPI298PASSprevia. Timeout20s local al caso24h justificado por2fallos5s con~72escriturasFULL, sin perderaserciones. Exit0/is_error=false, T002marcada sola. No UI, Googlelive ni previewmigrada. EsperarcommitT001~15:45paracongelarT002, sin tocaríndicependiente.
+
+## 2026-11-22 18:27 - Recuperacion Codex
+006/T001ced3ca8 confirmado; T002dcf9dec tras nueva revision24VitestPASS (runner inicial node--test incorrecto, corregido). ClaudeT003 iniciado18:25 y limitado18:26 hasta19:20. Cambios parciales conservados, sin checkbox niaceptacion. Nuevo intento preparado19:21, registro por comprobar. Ningun dato ni preview migrado, sin push/deploy.
 
 ## 2026-11-22 — T003 006-acceso-google (Claude)
 Vínculo Google: GET /api/account, POST /api/account/google/link/start con contraseña/CSRF/límites, callback link con usuario esperado, conflicto sin mutación, motivos fijos en /cuenta. Página /cuenta y enlace en cabecera. API 31/31 OIDC, 166/166 enfocadas; web 176/176; lint/build OK; e2e account 2/2 + identity 8/8 (360/1280). GET /api/account fuera del contrato, a revisar. Sin Google vivo. Sin git add/commit.
@@ -136,3 +152,19 @@ Rango RAM/disco con valor exacto antes de redondear (máximo exacto sí, +1 byte
 
 ## 2026-11-22 20:15 - Revision007/T002 aceptada (Codex)
 Independiente52API/40web/lint/build/e2e2Chrome360/1280/DBtemporal ydiffcheckPASS; capturasimport revisadas. Claude319API/211webintegradasprevias, reparacionfrontend40enfocadasPASS. Rangosexactos+1byte, file.text congeneracion/cleanup ykeysvolumen corregidos;7fallosantes. Migracion004 conservadora/owner/CSRF/revision/provenance/manualbackcompat revisados. IncidenciaCPUjsdominitial corregida sinvalorconservado; fixturesactuales auditados. SinCIMreal/DBpreviewmigrada niGooglelive. Exit0/is_error=false. T001snapshotd5adbdc759a2b6032bc21bdb0bdc41658c60d100 esperahelper33396 hasta20:31:49; T002blobsaceptadossincommit. T005006be6c53c real20:11:49 AESRJ; nuevosparentsinsolapamiento revisados antesdecongelarT001 ycheckboxT002 comprobadoNOstaged. Noreset/fechasfalsas/push.
+
+## 2026-11-22 20:20 - Verificacion adicional Node22 del recopilador (Codex)
+Runtime portable oficial Node22.0.0win-x64 descargado solo en.local/toolchains, sin instalacion global/cambioPATH. SHA256ZIP32d639b47d4c0a651ff8f8d7d41a454168a3d4045be37985f9a810cf8cef6174 contrastado con https://nodejs.org/dist/v22.0.0/SHASUMS256.txt ; ejecutableSHA256db174445b3d28314772bc3918e39d8543cfbd18d542cf2a662f431f5cdc259ea. Archivo publico delproveedor, sin credenciales. Node --version v22.0.0; comando .local/toolchains/node-v22.0.0-win-x64/node.exe --test tools/diagnostic/test/collector.test.mjs desdecodigo:21/21PASS. ConsultaCIM/escritura/plataforma/RAM inyectadas, ningun inventarioreal; pruebaGitatributos sololectura. El pisoNode22runtime queda comprobado confixtures enWindows, no seafirma ejecucionCIMreal. Evidencia posterior a snapshotsT001/T002 previamenteaceptados; indiceT001congelado intacto.
+
+## 2026-11-22 20:26 - Bloqueo de ejecucion T003, no aceptacion
+Claude devolvio exit1/is_error=true a20:19:14: "You've hit your weekly limit - resets Nov 23, 11pm (America/Tijuana)". T003 parcial, sincheckbox ni revision/commit; se preserva la misma sesion y4paths, no se suple construccion porCodex. 008 no activada y T004 no iniciada. T001/T002 siguen aceptadas y se cierran solo sus commits con cadencia20min. Googlelive/Railway siguen pendientes. Preview web5573 HTTP200 pero API3301 ConnectFailure; no se diagnostico causa ni se reinicio/migroDB.
+
+## 2026-11-22 20:33 - Commit007/T001 real y T002 congelada
+HelperT001 termino con d5d2612b0907b6cc26b9943cd23231e9c09be22e a20:31:49; AESRJautor/committer ytree d5adbdc revisados, indice libre comprobado. T002 nuevo padre d5d2612 corresponde al tree previamente revisado; solapamiento solo9paths de preparacion/documentacion/checkboxes, ningun productoT002 modificado porT001. SnapshotT00225a38e0d70ab04aae4eaf10276cb393048a643f3 preparado conblobsaceptados; helper ocultoPID36044 espera20:51:49. Cacheworkflow coincide exactamente conblobT002, requisitos/evaluation/testevaluation ycheckboxT003 NOstaged. HashesparcialT003intactos. No Claude activo ni nuevo intento por cuota.
+
+## 2026-11-22 20:38 - Registro de tentativa unica (baseline final pendiente)
+register_release_resume.ps1 -NotBefore2026-11-23T23:01:00-08:00 registro WindowsTask NoMoreSaaS-Reanudar-20261123-2301; verificada Ready, next_run_time23Nov23:01-08. No ejecucion ahora ni capacidadgarantizada. Baseline final/config esperado aun NO verificados porque indiceT002congelado hasta20:51:49; completar despues de su commitreal. No afirmar reanudacion plenamentevalidada antesdelpreflightfinal.
+
+## 2026-11-22 23:30 - Cierre 007, retiro de Google y preparación Railway (Claude Code)
+Por instrucción directa del usuario se terminó 007 (T003/T004), se retiró el acceso con Google y se implementó 008 (modo producción Express, Dockerfile, entrypoint con volumen, railway.json, runbook). Verificación: lint, API293, web193, build, e2e48/48, smoke de producción local. Commits 24d067f, ae58ad1, 06bf7f1 en feat/revision-y-railway, integrados en main por fast-forward. Despliegue vivo pendiente de configurar volumen y variables en Railway.
+

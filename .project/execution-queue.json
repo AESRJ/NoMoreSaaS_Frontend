@@ -13,7 +13,7 @@
   ],
   "commit_interval_minutes": 20,
   "minimum_minutes_between_commits": 20,
-  "implementation_status": "006_committed_code_reviewed_Googlelive_pending_007_T001_frozen_T002_reviewed_T003_ready",
+  "implementation_status": "blocked_claude_weekly_007_T003_partial_T001_committed_d5d2612_T002_frozen",
   "external_dependencies": [
     "GoogleOAuth client setup not understood by user: guided setup required; no secrets in chat",
     "Railway connected per user; operative tools/account/billing not yet verified"
@@ -55,5 +55,44 @@
       "external_blocker": "Google client/consent/protected variables/live pending",
       "reviewed_commit": "be6c53c8422b31c5d4689e232594b0a556df1b84"
     }
+  },
+  "executor_blocker": {
+    "provider": "claude-code",
+    "reason": "weekly_quota",
+    "observed_at": "2026-11-22T20:19:14-08:00",
+    "notice": "You've hit your weekly limit · resets Nov 23, 11pm (America/Tijuana)",
+    "retry_not_before": "2026-11-23T23:01:00-08:00",
+    "task": "007-equipo-y-plan-seguro/T003",
+    "reviewed": false,
+    "partial_hashes": {
+      "apps/api/data/requirements.json": "713816afe4160323f29144ca952c47edc56dd583f77f4c2dafe640141ea92a08",
+      "apps/api/src/evaluation.js": "b3be538ec769949357671fff32d6b2745dc8bb94e9684ce0900fd98e7c0977bf",
+      "apps/api/src/workflow.js": "def865a70340403c5287ae36b6fceae1eb0bd01234baecef6554d936455d3ab8",
+      "apps/api/tests/evaluation.test.js": "ae20ece8323ebd07c8f98e5fca113ecb756de2984cd95435aeb506f7ff7692d7"
+    }
+  },
+  "earliest_retry_local": "2026-11-23T23:01:00-08:00",
+  "reviewed_tasks_007": {
+    "T001": {
+      "accepted": true,
+      "commit": "d5d2612b0907b6cc26b9943cd23231e9c09be22e"
+    },
+    "T002": {
+      "accepted": true,
+      "commit": null,
+      "frozen_tree": "25a38e0d70ab04aae4eaf10276cb393048a643f3"
+    },
+    "T003": {
+      "accepted": false,
+      "partial": true,
+      "blocker": "Claude weekly quota"
+    }
+  },
+  "resume_schedule": {
+    "task_name": "NoMoreSaaS-Reanudar-20261123-2301",
+    "not_before": "2026-11-23T23:01:00-08:00",
+    "registration_verified": true,
+    "preflight_verified": false,
+    "note": "Task Scheduler Ready; baseline final pendiente de commitT002; una unica tentativa"
   }
 }

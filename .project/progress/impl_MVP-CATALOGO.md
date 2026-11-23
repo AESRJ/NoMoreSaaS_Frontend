@@ -1,5 +1,9 @@
 # Implementacion MVP-CATALOGO (T001-T017)
 
+## Nota operativa de Codex - 2026-11-21
+
+Entrega cerrada segun handoff y revision posteriores; el cuerpo historico conserva el estado original del constructor. A solicitud del usuario se configuro `.claude/settings.local.json` con acceptEdits y 16 reglas concretas de comandos Bash/PowerShell para verificaciones y desarrollo local. NotebookLM conservado. NoMoreSaaS_Frontend ya es raiz escribible de esta sesion. `init.cmd` retorno 0 (17/17 completas); parseo PowerShell del JSON y comprobacion de modo/reglas/NotebookLM correctos; `git diff --check` retorno 0, con avisos CRLF de archivos preexistentes. No se inicio Claude para comprobar carga efectiva ni se repitieron pruebas de producto por este cambio de configuracion. Detalle en `.project/execution-permissions.md`. Sin nueva implementacion, commits, push ni cambios fuera de este repositorio. Las restricciones administradas siguen vigentes.
+
 Constructor: Claude Code. Fecha: 2026-11-20. Rama: `feat/catalogo-comparacion`. Estado: **implementado y verificado localmente, pendiente de revision de Codex**. No se marca la feature como done ni se cambia el estado `ready` de la entrega.
 
 ## Entorno y bloqueo inicial

@@ -1,11 +1,6 @@
-# Estado vigente - 2026-11-22 20:15 America/Tijuana
+# Estado actual - 2026-11-22 (Claude Code, por decisión del usuario)
 
-005 cerrada. 006 codigo revisado y cinco commits reales: ced3ca8, dcf9dec, 74ce23e, a181317 y be6c53c (T005 confirmado20:11:49, AESRJ autor/committer). Sigue blocked/code_reviewed=true y handoff in_review por Google real pendiente; no done porfixtures.
-
-007 es la unica activa/ready. T001 aceptada y snapshot d5adbdc759a2b6032bc21bdb0bdc41658c60d100 congelado sobrebe6c53c: helper ocultoPID33396 espera20:31:49, NO tocar indice ni preparar otro commit hasta comprobarlo. T002 aceptada tras reparacion: API52/52, web40/40, lint/build y e2e2/2 independientes en3501/5773 conDBtemporal ybrowser/JSONfixtures. Blobs de contenido aceptado registrados, aun sinindice/commit. T003 siguiente: claridad de evaluacion y certeza; ninguna construccion porCodex. T004 pendiente y008draft.
-
-T001:21fixtures/lint/help ycheckout-indexautocrlfaisladoPASS, arquitecturaCIM9/12coherenteo unknown yLFchecksum. Sin consultaCIMreal ni Node22floor probado. LecturaRAMincidental de primera prueba corregida y sinvalorconservado. T002: migracion004aditiva/provenance/manualconservado, backendowner/CSRF/transaccion/revision; importpreview/browser parcial conconfirmacion. Hallazgos reparados porClaude: rango exacto antesderedondear, lecturasdearchivoobsoletas descartadas ykeysvolumen repetidas. Antes7fallos, despues40enfocadasPASS. Primera pruebaT002leyoCPUsporjsdom incidentalmente, corregida congettersfixture/undefined y sinvalorconservado. No inventarioexportado ni migracionDBpreview.
-
-Arnes reviewed_blobs conserva contenidoaceptado sin restaurarworkingtree ni mezclar tareas; cuatro Gitfixturesaislados PASS. Cadencia20min yguardasbase/tree intactas, sinfechasfalsas/commitsvacios/push. Maestro0d64bdf real; prueba arnes permanente aun sincommit. Datos/preview y herramientas/notificaciones ajenas conservados. Codex planifica/revisa/documenta/opera; Claude producto/pruebas/Docker.
-
-NotebookLM CLI autenticado, resumen0433f222-316e-4c80-8281-f401ca9fcee2 confirmado en cuaderno delproyecto; Git manda. Railway catalogoinstalled=false, CLI/Docker/Podman/WSL no operativos; CUAEdgelectura fallo sininputs. Google3variables ausentes (solo presencia), cuenta/plan/costosRailway sinverificar. SinURL/despliegue/compras/upgrade/SSH/DBlocalmigrada. Accionexterna: habilitarRailway operativo y completar clienteGoogle/consentimiento/variablesprotegidas/pruebaviva, sin secretosporchat.
+- 007 MVP-EQUIPO-ASISTIDO: T001-T004 implementadas y verificadas (commit T003/T004 24d067f).
+- 006 AUTH-GOOGLE: retirada por decisión del usuario (ae58ad1). Solo correo y contraseña.
+- 008 DEPLOY-RAILWAY: T001-T003 implementadas (ae58ad1, 06bf7f1). Pendiente el despliegue vivo en la cuenta Railway del usuario: volumen en /data, SESSION_SECRET y dominio generado. Ver .project/docs/deployment-railway.md e impl_DEPLOY-RAILWAY.md.
+- Verificación: lint, API 293, web 193, build, e2e 48/48 y smoke de producción local.
