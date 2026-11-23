@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
@@ -158,24 +158,45 @@ describe('arranque del servidor', () => {
     }
   });
 
-  it('Google: desactivado sin variables, activo con las tres y sin arrancar si es parcial', async () => {
+  it('producción: 0.0.0.0, origen de Railway, SPA en el mismo origen y /api 404 JSON', async () => {
     const dir = await migratedDir();
-    const google = {
-      GOOGLE_CLIENT_ID: 'cliente-de-prueba.apps.googleusercontent.com',
-      GOOGLE_CLIENT_SECRET: 'secreto-de-prueba',
-      GOOGLE_REDIRECT_URI: 'http://127.0.0.1:5573/api/auth/google/callback',
-    };
-    const servers = [];
+    const web = join(dir, 'web');
+    await mkdir(join(web, 'assets'), { recursive: true });
+    await writeFile(join(web, 'index.html'), '<!doctype html><div id="root"></div>');
+    await writeFile(join(web, 'assets', 'app-abc123.js'), 'console.log(1)');
+    const env = envFor(dir, { NODE_ENV: 'production', APP_ORIGIN: '', RAILWAY_PUBLIC_DOMAIN: 'nomoresaas.up.railway.app' });
+    const server = await startServer({ port: 0, env, staticDir: web });
     try {
-      servers.push(await startServer({ port: 0, env: envFor(dir) }));
-      expect((await request(servers[0]).get('/api/auth/providers')).body).toEqual({ google: { enabled: false } });
-      servers.push(await startServer({ port: 0, env: envFor(dir, google) }));
-      expect((await request(servers[1]).get('/api/auth/providers')).body).toEqual({ google: { enabled: true } });
-      await expect(startServer({ port: 0, env: envFor(dir, { ...google, GOOGLE_CLIENT_SECRET: '' }) })).rejects.toThrow(
-        /GOOGLE_CLIENT_SECRET/,
-      );
+      expect(server.address().address).toBe('0.0.0.0');
+      const home = await request(server).get('/');
+      expect(home.status).toBe(200);
+      expect(home.text).toContain('id="root"');
+      expect(home.headers['cache-control']).toBe('no-cache');
+      const deep = await request(server).get('/proyectos/123/flujo');
+      expect(deep.status).toBe(200);
+      expect(deep.text).toContain('id="root"');
+      const asset = await request(server).get('/assets/app-abc123.js');
+      expect(asset.status).toBe(200);
+      expect(asset.headers['cache-control']).toMatch(/immutable/);
+      expectErrorBody(await request(server).get('/assets/falta.js'), 404, 'NOT_FOUND');
+      expectErrorBody(await request(server).get('/api/no-existe'), 404, 'NOT_FOUND');
+      expectErrorBody(await request(server).post('/cualquier'), 404, 'NOT_FOUND');
+      expect((await request(server).get('/api/health')).body).toEqual({ status: 'ok' });
+      // Tras el proxy de Railway (1 salto) la sesión se considera segura.
+      const session = await request(server).get('/api/auth/session').set('X-Forwarded-Proto', 'https');
+      expect(session.status).toBe(200);
     } finally {
-      await Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
+      await new Promise((resolve) => server.close(resolve));
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('producción sin la web compilada no arranca', async () => {
+    const dir = await migratedDir();
+    try {
+      const env = envFor(dir, { NODE_ENV: 'production', APP_ORIGIN: 'https://app.example.com' });
+      await expect(startServer({ port: 0, env, staticDir: join(dir, 'nada') })).rejects.toThrow(/pnpm build/);
+    } finally {
       await rm(dir, { recursive: true, force: true });
     }
   });

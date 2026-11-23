@@ -1,11 +1,14 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createApp } from './app.js';
 import { createAuth } from './auth.js';
 import { DEFAULT_CATALOG_PATH, loadCatalog } from './catalog.js';
-import { loadConfig, loadGoogleConfig } from './config.js';
+import { REPO_ROOT, loadConfig } from './config.js';
 import { DatabaseError, loadMigrations, openDatabase } from './db.js';
-import { createGoogleProvider } from './google.js';
 import { createProjects } from './projects.js';
+
+export const DEFAULT_WEB_DIST = join(REPO_ROOT, 'apps', 'web', 'dist');
 
 /**
  * Comprueba que la DB tiene exactamente las migraciones de este código. El
@@ -30,16 +33,18 @@ export function assertMigrated(db, migrations = loadMigrations()) {
  */
 export async function startServer({
   env = process.env,
-  host = env.API_HOST || '127.0.0.1',
-  port = Number(env.API_PORT || 3001),
+  host = env.API_HOST || (env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'),
+  port = Number(env.PORT || env.API_PORT || 3001),
+  staticDir = env.NODE_ENV === 'production' ? env.WEB_DIST_DIR || DEFAULT_WEB_DIST : null,
   catalogPath = env.CATALOG_PATH || DEFAULT_CATALOG_PATH,
   logger = console,
   now,
 } = {}) {
   const catalog = await loadCatalog(catalogPath, { requireSeedCoverage: catalogPath === DEFAULT_CATALOG_PATH });
   const config = loadConfig(env);
-  // Todo-o-nada: sin variables de Google el proveedor queda desactivado.
-  const googleConfig = loadGoogleConfig(env, config.appOrigin);
+  if (staticDir && !existsSync(join(staticDir, 'index.html'))) {
+    throw new Error(`No se encontró la web compilada en ${staticDir}; ejecuta pnpm build.`);
+  }
   const db = openDatabase(config.databasePath);
   let auth;
   let projects;
@@ -50,8 +55,6 @@ export async function startServer({
       sessionSecret: config.sessionSecret,
       appOrigin: config.appOrigin,
       cookieSecure: config.cookieSecure,
-      googleProvider: googleConfig ? createGoogleProvider(googleConfig) : null,
-      logger,
       ...(now ? { now } : {}),
     });
     projects = createProjects({ db, catalog, auth, ...(now ? { now } : {}) });
@@ -60,7 +63,7 @@ export async function startServer({
     db.close();
     throw error;
   }
-  const app = createApp({ catalog, logger, auth, projects });
+  const app = createApp({ catalog, logger, auth, projects, trustProxyHops: config.trustProxyHops, staticDir });
   return new Promise((resolve, reject) => {
     const server = app.listen(port, host, (error) => {
       if (error) {
@@ -85,6 +88,15 @@ if (isMain) {
     .then((server) => {
       const address = server.address();
       console.log(`[api] escuchando en http://${address.address}:${address.port}`);
+      // Railway envía SIGTERM al redesplegar: dejar de aceptar y cerrar la DB.
+      const shutdown = (signal) => {
+        console.log(`[api] ${signal} recibido; cerrando…`);
+        server.close(() => process.exit(0));
+        server.closeIdleConnections?.();
+        setTimeout(() => process.exit(0), 10000).unref();
+      };
+      process.once('SIGTERM', shutdown);
+      process.once('SIGINT', shutdown);
     })
     .catch((error) => {
       console.error('[api] no se pudo iniciar:', error.message);

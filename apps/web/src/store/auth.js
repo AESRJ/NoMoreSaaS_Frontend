@@ -24,19 +24,6 @@ const WRITE_RENEWED_MESSAGE =
 const WRITE_NOT_RENEWED_MESSAGE =
   'La protección de la sesión caducó y no se pudo renovar. No se ha guardado ningún cambio: comprueba la conexión y vuelve a intentarlo.';
 
-export const GOOGLE_STATUS = Object.freeze({
-  unknown: 'unknown',
-  loading: 'loading',
-  enabled: 'enabled',
-  disabled: 'disabled',
-  error: 'error',
-});
-
-const GOOGLE_RENEWED_MESSAGE =
-  'La protección de la sesión había caducado y ya se ha renovado. Vuelve a pulsar «Continuar con Google».';
-const GOOGLE_NOT_RENEWED_MESSAGE =
-  'La protección de la sesión caducó y no se pudo renovar. Comprueba la conexión y vuelve a intentarlo.';
-
 /** Escritura de una cuenta que ya no es la actual: no se envía o su resultado se descarta. */
 export const staleWriteError = () =>
   new AuthRequestError('stale', 'La sesión ha cambiado de cuenta; no se ha enviado ni guardado nada de la cuenta anterior.');
@@ -219,51 +206,8 @@ export function createAuthStore({ client = defaultAuthClient } = {}) {
       error: null,
       announcement: null,
       sessionExpired: false, // aviso visible en /entrar tras un 401 de datos privados
-      // Acceso con Google según GET /api/auth/providers: unknown → loading → enabled | disabled | error.
-      googleLogin: GOOGLE_STATUS.unknown,
 
       withCsrf,
-
-      /** Consulta una vez si Google está configurado; un error permite reintentar más tarde. */
-      loadProviders() {
-        const current = get().googleLogin;
-        if (current !== GOOGLE_STATUS.unknown && current !== GOOGLE_STATUS.error) return Promise.resolve();
-        if (typeof client.fetchProviders !== 'function') {
-          set({ googleLogin: GOOGLE_STATUS.disabled });
-          return Promise.resolve();
-        }
-        set({ googleLogin: GOOGLE_STATUS.loading });
-        return Promise.resolve()
-          .then(() => client.fetchProviders())
-          .then(
-            (providers) => set({ googleLogin: providers.google.enabled ? GOOGLE_STATUS.enabled : GOOGLE_STATUS.disabled }),
-            () => set({ googleLogin: GOOGLE_STATUS.error }),
-          );
-      },
-
-      /**
-       * Inicia el acceso con Google y navega (página completa) a la URL validada.
-       * Ante 403 renueva el token sin reenviar; 503 marca el proveedor como no disponible.
-       */
-      async startGoogleLogin() {
-        const token = await currentCsrfToken();
-        let url;
-        try {
-          url = await client.startGoogleLogin({ csrfToken: token });
-        } catch (error) {
-          if (error instanceof AuthRequestError && error.status === 503) {
-            set({ googleLogin: GOOGLE_STATUS.disabled });
-          }
-          if (error instanceof AuthRequestError && error.status === 403 && error.code !== 'FORBIDDEN_ORIGIN') {
-            csrfToken = null;
-            const renewed = await loadSession({ silent: true });
-            const message = renewed && csrfToken ? GOOGLE_RENEWED_MESSAGE : GOOGLE_NOT_RENEWED_MESSAGE;
-            throw new AuthRequestError('http', message, { status: 403, code: error.code });
-          }
-          throw error;
-        }
-        client.navigate(url);
-      },
 
       /** Inicia la carga solo una vez; todas las llamadas comparten la misma petición. */
       ensureSession() {

@@ -89,42 +89,35 @@ export function parseSessionSecret(raw) {
   return raw;
 }
 
-export const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
-const GOOGLE_KEYS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'];
-const OPAQUE_VALUE = /^[\x21-\x7e]{1,512}$/;
-
-/**
- * Configuración OIDC de Google, solo servidor y todo-o-nada: sin ninguna de las
- * tres variables devuelve null (proveedor desactivado); con algunas, o con
- * valores inválidos, lanza ConfigError. La URI de callback es explícita, nunca
- * se infiere del Host, y debe ser exactamente APP_ORIGIN + GOOGLE_CALLBACK_PATH.
- * Los mensajes nombran variables, nunca sus valores.
- */
-export function loadGoogleConfig(env, appOrigin) {
-  const present = GOOGLE_KEYS.filter((key) => env[key] !== undefined && env[key] !== '');
-  if (present.length === 0) return null;
-  if (present.length !== GOOGLE_KEYS.length) {
-    const missing = GOOGLE_KEYS.filter((key) => !present.includes(key));
-    throw new ConfigError(`Configuración de Google incompleta: falta ${missing.join(', ')} (se requieren las tres o ninguna).`);
-  }
-  const clientId = env.GOOGLE_CLIENT_ID;
-  const clientSecret = env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = env.GOOGLE_REDIRECT_URI;
-  if (!OPAQUE_VALUE.test(clientId)) throw new ConfigError('GOOGLE_CLIENT_ID no es válido.');
-  if (!OPAQUE_VALUE.test(clientSecret)) throw new ConfigError('GOOGLE_CLIENT_SECRET no es válido.');
-  if (redirectUri !== `${appOrigin}${GOOGLE_CALLBACK_PATH}`) {
-    throw new ConfigError(`GOOGLE_REDIRECT_URI debe ser exactamente APP_ORIGIN seguido de ${GOOGLE_CALLBACK_PATH}.`);
-  }
-  return Object.freeze({ clientId, clientSecret, redirectUri });
+/** Número de proxies de confianza (0–3). Nunca `true`: solo saltos acotados. */
+export function parseTrustProxyHops(raw, fallback = 0) {
+  if (raw === undefined || raw === '') return fallback;
+  if (!/^[0-3]$/.test(raw)) throw new ConfigError('TRUST_PROXY_HOPS debe ser un entero entre 0 y 3.');
+  return Number(raw);
 }
 
 /**
- * Configuración completa de identidad. Los mensajes nunca incluyen el valor del
- * secreto. La integración con el servidor llega con la autenticación.
+ * Origen público: APP_ORIGIN explícito o, si falta, el dominio que Railway
+ * expone en RAILWAY_PUBLIC_DOMAIN (siempre https).
+ */
+function originFrom(env) {
+  if (env.APP_ORIGIN) return env.APP_ORIGIN;
+  const domain = env.RAILWAY_PUBLIC_DOMAIN;
+  if (domain && /^[a-z0-9.-]+$/i.test(domain)) return `https://${domain.toLowerCase()}`;
+  return env.APP_ORIGIN;
+}
+
+/**
+ * Configuración completa de la API. Los mensajes nunca incluyen el valor del
+ * secreto. En producción (NODE_ENV=production) se confía por defecto en un
+ * único proxy (el borde HTTPS de Railway) para que req.secure y req.ip sean
+ * correctos; se puede ajustar con TRUST_PROXY_HOPS.
  */
 export function loadConfig(env = process.env) {
+  const production = env.NODE_ENV === 'production';
   const databasePath = resolveDatabasePath(env);
   const sessionSecret = parseSessionSecret(env.SESSION_SECRET);
-  const { appOrigin, cookieSecure } = parseAppOrigin(env.APP_ORIGIN);
-  return Object.freeze({ databasePath, sessionSecret, appOrigin, cookieSecure });
+  const { appOrigin, cookieSecure } = parseAppOrigin(originFrom(env));
+  const trustProxyHops = parseTrustProxyHops(env.TRUST_PROXY_HOPS, production ? 1 : 0);
+  return Object.freeze({ production, databasePath, sessionSecret, appOrigin, cookieSecure, trustProxyHops });
 }

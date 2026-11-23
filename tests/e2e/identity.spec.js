@@ -151,23 +151,6 @@ test.describe('cuentas y proyectos (API real)', () => {
     await expectNoPageOverflow(page);
     await page.screenshot({ path: `${SCREENSHOT_DIR}identidad-lista-${width}.png`, fullPage: true });
 
-    // Mi cuenta (006) con la misma cuenta, sin registros extra (límite 10/IP/15 min):
-    // sin Google configurado en e2e no hay botón falso; un motivo fijo se muestra y se limpia.
-    await page.locator('.site-header').getByRole('link', { name: 'Mi cuenta' }).click();
-    await expect(page).toHaveURL(/\/cuenta$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Mi cuenta' })).toBeVisible();
-    await expect(page.getByRole('main').getByText(email, { exact: true })).toBeVisible();
-    const google = page.getByRole('region', { name: 'Acceso con Google' });
-    await expect(google.getByText('No disponible')).toBeVisible();
-    await expect(google.getByRole('button')).toHaveCount(0);
-    await expectNoPageOverflow(page);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}cuenta-${width}.png`, fullPage: true });
-    await page.goto('/cuenta?reason=google_cancelled');
-    await expect(page.getByText(/Cancelaste la vinculación en Google/)).toBeVisible();
-    await expect(page).toHaveURL(/\/cuenta$/);
-    await page.goto('/cuenta?reason=toString');
-    await expect(google).toBeVisible();
-    await expect(page.locator('.page-notice, .form-alert')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

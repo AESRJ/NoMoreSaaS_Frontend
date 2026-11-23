@@ -439,7 +439,7 @@ describe('formulario de entrada', () => {
     expect(emailInput()).not.toHaveAttribute('maxlength');
     expect(document.title).toBe('Entrar · NoMoreSaaS');
     expect(screen.queryByText(/olvidaste|recuperar|github/i)).not.toBeInTheDocument();
-    // Desde 006 Google solo aparece si la API lo confirma; aquí no está configurado: sin botón.
+    // El acceso con Google se retiró: solo correo y contraseña.
     expect(screen.queryByRole('button', { name: /google/i })).not.toBeInTheDocument();
   });
 

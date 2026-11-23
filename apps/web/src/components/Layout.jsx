@@ -37,9 +37,6 @@ function AccountArea({ onSignedOut }) {
           <li>
             <NavLink to="/proyectos">Mis proyectos</NavLink>
           </li>
-          <li>
-            <NavLink to="/cuenta">Mi cuenta</NavLink>
-          </li>
         </ul>
         <span className="account__email" title={user.email}>
           <span className="sr-only">Sesión iniciada como </span>

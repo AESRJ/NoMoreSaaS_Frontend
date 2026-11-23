@@ -2,7 +2,6 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import express from 'express';
 import session from 'express-session';
 import { ApiError } from './errors.js';
-import { mountGoogleAuth } from './google-auth.js';
 import { EmailUnavailableError, createAccountStore } from './identities.js';
 import { HasherBusyError, createPasswordHasher, isValidPassword } from './passwords.js';
 import { IDLE_TIMEOUT_MS, SqliteSessionStore, absoluteDeadline } from './sessions.js';
@@ -20,10 +19,6 @@ export const DEFAULT_LIMITS = Object.freeze({
   loginPerEmail: { limit: 5, windowMs: WINDOW_MS },
   loginPerIp: { limit: 20, windowMs: WINDOW_MS },
   registerPerIp: { limit: 10, windowMs: WINDOW_MS },
-  googleStartPerIp: { limit: 20, windowMs: WINDOW_MS },
-  // Reautenticación para vincular Google: mismo umbral que el login por correo.
-  linkPerUser: { limit: 5, windowMs: WINDOW_MS },
-  linkPerIp: { limit: 20, windowMs: WINDOW_MS },
   maxKeys: 10000,
 });
 
@@ -155,8 +150,6 @@ function toPublicError(error) {
  *   hasher?: ReturnType<typeof createPasswordHasher>,
  *   limits?: Partial<typeof DEFAULT_LIMITS>,
  *   cleanupIntervalMs?: number,
- *   googleProvider?: ReturnType<typeof import('./google.js').createGoogleProvider> | null,
- *   logger?: Pick<Console, 'error'>,
  * }} options
  */
 export function createAuth({
@@ -168,8 +161,6 @@ export function createAuth({
   hasher = createPasswordHasher(),
   limits = {},
   cleanupIntervalMs = CLEANUP_INTERVAL_MS,
-  googleProvider = null,
-  logger = console,
 }) {
   if (!db) throw new Error('createAuth requiere una base de datos abierta');
   if (!sessionSecret || !appOrigin || typeof cookieSecure !== 'boolean') {
@@ -181,9 +172,6 @@ export function createAuth({
     loginPerEmail: limiterOf(cfg.loginPerEmail),
     loginPerIp: limiterOf(cfg.loginPerIp),
     registerPerIp: limiterOf(cfg.registerPerIp),
-    googleStartPerIp: limiterOf(cfg.googleStartPerIp),
-    linkPerUser: limiterOf(cfg.linkPerUser),
-    linkPerIp: limiterOf(cfg.linkPerIp),
   };
 
   const store = new SqliteSessionStore({ db, now });
@@ -259,35 +247,6 @@ export function createAuth({
     if (!result.allowed) throw errors.rateLimited(result.retryAfterMs);
   }
 
-  /**
-   * Relee la sesión del store: true solo si el sid de la petición sigue
-   * persistido y vigente con el mismo estado cargado al inicio (CSRF,
-   * creación y usuario). Detecta logout, rotación o vencimiento durante una
-   * espera asíncrona. Reutiliza store.get (validaciones de inactividad,
-   * límite absoluto y payload de 003; borra el registro si ya venció).
-   * Síncrono: SqliteSessionStore.get invoca su callback antes de volver, así
-   * que no hay cesión entre esta lectura y lo que el llamador ejecute después.
-   */
-  function isSessionCurrent(req) {
-    let settled = false;
-    let result;
-    let failure;
-    store.get(req.sessionID, (error, data) => {
-      settled = true;
-      failure = error;
-      const sess = req.session;
-      result = Boolean(
-        data && sess &&
-        typeof sess.csrfToken === 'string' && data.csrfToken === sess.csrfToken &&
-        data.createdAt === sess.createdAt &&
-        data.userId === sess.userId,
-      );
-    });
-    if (!settled) throw new Error('El store de sesiones debe responder de forma síncrona.');
-    if (failure) throw failure;
-    return result;
-  }
-
   /** Nueva sesión (nuevo sid y CSRF) guardada antes de responder. */
   async function establishSession(req, userId) {
     await promisify((cb) => req.session.regenerate(cb));
@@ -342,7 +301,7 @@ export function createAuth({
     limit(limiters.loginPerEmail, emailKey);
 
     const email = normalizeEmail(body.email);
-    // Sin credencial local (correo inexistente o cuenta solo-Google): mismo coste y error genérico.
+    // Sin credencial local (correo inexistente o cuenta sin contraseña): mismo coste y error genérico.
     const row = email && isValidPassword(body.password) ? accounts.findLocalByEmail(email) : undefined;
     const ok = row ? await hasher.verify(body.password, row.passwordHash) : await hasher.verifyDummy(body.password);
     if (!ok) throw errors.invalidCredentials();
@@ -361,35 +320,6 @@ export function createAuth({
     res.status(204).end();
   });
 
-  // /api/account: datos privados de la cuenta actual (misma sesión y guardas).
-  const accountRouter = express.Router();
-  accountRouter.use(noStore, sessionMiddleware, capCookie);
-
-  const google = mountGoogleAuth(router, {
-    accountRouter,
-    requireUser,
-    hasher,
-    isValidPassword,
-    limitLink: (req) => {
-      limit(limiters.linkPerIp, req.ip);
-      limit(limiters.linkPerUser, req.user.id);
-    },
-    resetLinkLimit: (req) => limiters.linkPerUser.reset(req.user.id),
-    db,
-    provider: googleProvider,
-    accounts,
-    now,
-    logger,
-    mutationBody,
-    requireCsrf,
-    readFields,
-    limitStart: (req) => limit(limiters.googleStartPerIp, req.ip),
-    normalizeEmail,
-    establishSession,
-    isSessionCurrent,
-  });
-  google.attempts.cleanup(now());
-
   // Traduce errores del parser/hasher a errores públicos; reutilizable por
   // cualquier router que use `mutationBody` (p. ej. /api/projects).
   function mapPublicErrors(error, _req, res, next) {
@@ -398,13 +328,11 @@ export function createAuth({
     next(publicError);
   }
   router.use(mapPublicErrors);
-  accountRouter.use(mapPublicErrors);
 
   // Limpieza periódica de sesiones vencidas y claves caducadas del limitador.
   const timer = setInterval(() => {
     try {
       store.cleanup();
-      google.attempts.cleanup(now());
       Object.values(limiters).forEach((l) => l.prune());
     } catch {
       // Un fallo puntual de limpieza no detiene la API; se reintenta en el siguiente ciclo.
@@ -414,7 +342,6 @@ export function createAuth({
 
   return {
     router,
-    accountRouter,
     session: sessionMiddleware,
     capCookie,
     noStore,

@@ -533,6 +533,8 @@ describe('configuración', () => {
   it('carga una configuración válida de loopback', () => {
     const cfg = loadConfig({ SESSION_SECRET: SECRET, APP_ORIGIN: 'http://127.0.0.1:5173' });
     expect(cfg).toEqual({
+      production: false,
+      trustProxyHops: 0,
       databasePath: DEFAULT_DATABASE_PATH,
       sessionSecret: SECRET,
       appOrigin: 'http://127.0.0.1:5173',
@@ -566,6 +568,19 @@ describe('configuración', () => {
       expect(() => loadConfig({ SESSION_SECRET: SECRET, APP_ORIGIN: origin }), String(origin)).toThrow(ConfigError);
     }
     expect(loadConfig({ SESSION_SECRET: SECRET, APP_ORIGIN: 'http://localhost:5573' }).appOrigin).toBe('http://localhost:5573');
+  });
+
+  it('producción: origen desde RAILWAY_PUBLIC_DOMAIN y proxy acotado', () => {
+    const cfg = loadConfig({ NODE_ENV: 'production', SESSION_SECRET: SECRET, RAILWAY_PUBLIC_DOMAIN: 'App.up.railway.app' });
+    expect(cfg.appOrigin).toBe('https://app.up.railway.app');
+    expect(cfg.cookieSecure).toBe(true);
+    expect(cfg.trustProxyHops).toBe(1);
+    const explicit = loadConfig({ NODE_ENV: 'production', SESSION_SECRET: SECRET, APP_ORIGIN: 'https://x.example.com', RAILWAY_PUBLIC_DOMAIN: 'otro.up.railway.app', TRUST_PROXY_HOPS: '2' });
+    expect(explicit.appOrigin).toBe('https://x.example.com');
+    expect(explicit.trustProxyHops).toBe(2);
+    for (const bad of ['true', '-1', '4', '1.5']) {
+      expect(() => loadConfig({ SESSION_SECRET: SECRET, APP_ORIGIN: 'https://x.example.com', TRUST_PROXY_HOPS: bad }), bad).toThrow(/TRUST_PROXY_HOPS/);
+    }
   });
 });
 

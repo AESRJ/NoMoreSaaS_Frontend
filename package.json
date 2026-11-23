@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "pnpm --recursive run test",
     "build": "pnpm --filter @nomoresaas/web run build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "start": "pnpm --filter @nomoresaas/api start"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
