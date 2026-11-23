@@ -4,3 +4,7 @@
 *.py text eol=lf
 *.ps1 text eol=crlf
 *.pdf binary
+# Recopilador 007: la copia descargable y su SHA-256 deben ser byte a byte iguales a la fuente.
+tools/diagnostic/nomoresaas-diagnostico.mjs text eol=lf
+apps/web/public/downloads/nomoresaas-diagnostico.mjs text eol=lf
+apps/web/public/downloads/nomoresaas-diagnostico.mjs.sha256 text eol=lf

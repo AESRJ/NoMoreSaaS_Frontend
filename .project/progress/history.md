@@ -111,3 +111,19 @@ Integración: prueba SC-001 (aislamiento de proyectos y logout de cuenta Google)
 
 ## 2026-11-22 19:41 - Revision 006/T005 aceptada (Codex)
 Independiente37OIDC/lint y14e2eChrome360/1280 PASS; Claude API312/web195/lint/build/init y e2e54/54PASS despues de reagruparfixtures sin bajarlimites (antes52/54 por12registros). AislamientoGoogle/local ylogout comprobados con clienteGoogle simulado. Guia/README/evidenciaFRSC revisados. Exit0/is_error=false y5/5checkboxes. Codigo006 aceptado, Googlelivependiente: blocked/code_reviewed=true, no done ni deploy. T004snapshot congelado, T005aceptada aun sinprepararcommit. No tocarindiceT004.
+
+## 2026-11-22 19:42 - Codigo006 revisado y activacion007 porCodex
+T005 exit0/is_error=false, cinco tareas006 revisadas. Reporte review_AUTH-GOOGLE maestro/codigo actualizado, Googlelive pendiente: indice AUTH-GOOGLEblocked/code_reviewed=true, handoffin_review. 007unica inprogress/ready trasced3ca8 yrevision006; actualizadoshandoffsambos, cola, punteros, identitysource, AGENTS/CLAUDE y estado. T004snapshot congelado/noindice y T005pathsconhashes preservados; T001007 solo nuevosarchivoscollector/fixtures, README006 excluido porcoordinacion. Checks previos alconstructor registrados porseparado; no publicacion ni done006.
+
+## 2026-11-22 — T001 007-equipo-y-plan-seguro (Claude)
+Recopilador Windows Node22+ de solo lectura en tools/diagnostic (CIM fija por powershell.exe de System32 -NoProfile -NonInteractive, timeout 20 s, sin red/Bypass/entrada interpolada; JSON Diagnostic v1 ≤64KiB con flag wx), copia, SHA-256 y guía LEEME en apps/web/public/downloads. node --test tools/diagnostic 16/16 (con fixtures; primera ejecución 15/16 porque una prueba leía os.totalmem real, corregida), lint PASS y handoff OK. Sin consulta real del equipo ni ejecución en Windows real (pendiente externa). README/006/eslint sin tocar. Sin git add/commit.
+
+## 2026-11-22 — T001 007 corrección arquitectura (Claude)
+Arquitectura desde Win32_Processor.Architecture en la misma consulta (9→amd64, 12→arm64; ausente/desconocido/mezcla→unknown); sin process.arch/os.arch. Fallo reproducido 16/20, tras corregir 20/20 con fixtures (incluye Node x64+CIM ARM64→arm64), lint PASS, copia/SHA-256 regenerados con build. Registrada honestamente una lectura incidental de os.totalmem real en la primera ejecución anterior (valor no conservado). Sin CIM real ni git add/commit.
+
+## 2026-11-22 — T001 007 corrección finales de línea (Claude)
+.gitattributes: eol=lf para la fuente del recopilador, la copia descargable y su .sha256 (reglas previas conservadas, sin renormalizar ni tocar el índice). Prueba de atributos y ausencia de CR; 21/21 PASS, lint PASS, checksum sin cambios (97e0d54c…). Clon temporal con autocrlf=true no ejecutado: requería una aprobación no disponible. Sin git add/commit.
+
+## 2026-11-22 19:55 - Revision007/T001 aceptada (Codex)
+21fixtures/lint/diffcheck/help independientesPASS. ArquitecturaCIM9/12o unknown, no process.arch;4fallosantes reparados. Checkout-indexaisladoautocrlftrue reproducechecksumrotoantes/validodespues deLF acotado. Scope .gitattributes agregado a handoffs paraestamismatarea. SinCIMreal, lecturaRAMincidentalinitialhonestamenteregistrada/corregida. T001codigoaceptado sincommit, blobsGitconservados. Preparacion007 documentalrevisada conpaths explicitos; unafeatureactiva y datos/herramientaspreviospreservados.
+T004006commita181317 confirmado19:51:49 AESRJautor/committer. T005006hashesintactos/nuevabaserevisada, snapshot834d7e3c6ac72bfdbe0fb59eeff040a8d0b9e359 congelado; helperPID35864 espera20:11:49. Arnes reviewed_blobs opcionales preserva contenidoaceptado frente a tareasposteriores sin tocarindicecongelado; pruebasaisladas objeto invalido noindexa y blobaceptado/workingtreeposterior separados PASS, compilePASS. Sinfechasfalsas ni commitsvacios.

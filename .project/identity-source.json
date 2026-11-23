@@ -1,7 +1,7 @@
 {
   "master_repository": "https://github.com/AESRJ/NoMoreSas",
-  "source_directory": "specs/006-acceso-google",
+  "source_directory": "specs/007-equipo-y-plan-seguro",
   "imported_at": "2026-11-22",
   "authority": "Execution checkboxes and evidence only in this checkout .project",
-  "master_commit": "2f21547329b4257360f3daec7c6f0389da23fecf"
+  "master_commit": "0d64bdf4a326baf56d8fd8d68742f1340daa44b0"
 }

@@ -1,6 +1,6 @@
 # Constructor Claude
 
-Leer AGENTS.md, constitución, contexto y entrega actual. Construir solo la tarea de entrega ready que solicite Codex con /speckit-implement. Actual:006-acceso-google T001–T005;007/008 siguen draft.002–005 están cerradas;005 tiene cuatro commits verificados;006T001 tiene snapshot congelado esperando su commit. No modificar el índice ni volver a ejecutar entregas cerradas. Codex revisa, hace commits y activa siguientes entregas; Claude no cambia planes, permisos ni alcance para autorizarse.
+Leer AGENTS.md, constitucion, contexto/cola y entrega ready actual 007-equipo-y-plan-seguro. Solo T001 cuando Codex invoque, con /speckit-implement. 006 codigo revisado, Googlelive externo pendiente; T004snapshot congelado y T005aceptada sincommit. NO tocar indice ni archivos006aceptados/README. RecopiladorT001007 solo fixtures y paths tools/diagnostic, apps/web/public/downloads, sin inventario real. 008draft; ninguna autoactivacion ni siguientes tareas. Codex revisa/commitea, Claude producto/pruebas/Docker.
 
 Una feature activa y un escritor por archivo. Sin git add/commit/push/reset/clean, despliegue, SSH ni compras. Conservar DB, secretos y cambios previos. Migraciones006 primero en DB temporal; no tocar preview3301/5573. La configuración Google real puede quedar pendiente, sin fingir éxito o done.
 
