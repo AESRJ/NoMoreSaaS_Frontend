@@ -90,3 +90,12 @@ isSessionCurrent síncrono; TTL + relectura de sesión + mutación + destroy del
 
 ## 2026-11-22 — Revisión006/T002 aceptada (Codex)
 Proveedor/config/rutas ySDK11.3.4fijado revisados; Googlevivo aún pendiente. HallazgoSC003de sesión duranteawait se reprodujo con4fallos y Claude reparó; segundoajuste eliminó cesión innecesaria despuésdecomprobarestado. Prueba de microtarea falló conawait y pasa sinél. Codexlint/156APIenfocadas/diffcheckPASS; Claude24OIDC/156enfocadasPASS yAPI298PASSprevia. Timeout20s local al caso24h justificado por2fallos5s con~72escriturasFULL, sin perderaserciones. Exit0/is_error=false, T002marcada sola. No UI, Googlelive ni previewmigrada. EsperarcommitT001~15:45paracongelarT002, sin tocaríndicependiente.
+
+## 2026-11-22 — T003 006-acceso-google (Claude)
+Vínculo Google: GET /api/account, POST /api/account/google/link/start con contraseña/CSRF/límites, callback link con usuario esperado, conflicto sin mutación, motivos fijos en /cuenta. Página /cuenta y enlace en cabecera. API 31/31 OIDC, 166/166 enfocadas; web 176/176; lint/build OK; e2e account 2/2 + identity 8/8 (360/1280). GET /api/account fuera del contrato, a revisar. Sin Google vivo. Sin git add/commit.
+
+## 2026-11-22 — T003 corrección Codex (Claude)
+link/start relee la sesión tras el hash; respuesta obsoleta → 401 sin Set-Cookie/save/touch ni intento. 5 casos con hasher diferido fallaban (cookie del sid antiguo) y pasan; reason solo con claves propias. google-auth 36/36, auth/api/security 91/91, web account 16/16, lint OK. Sin git add/commit.
+
+## 2026-11-22 19:31 - Revision 006/T003 aceptada (Codex)
+Claude construyo vinculo y /cuenta; Codex reviso API/web/contrato y capturas360/1280. Hallazgo de cookie antigua tras hash reproducido en5casos y corregido porClaude. Independiente: pnpm --filter @nomoresaas/api exec vitest run tests/google-auth.test.js tests/auth.test.js 99/99, web account16/16, pnpm lint PASS, git diff --check PASS. Claude36OIDC/91regresion, web176previas, build y e2e account2/identity8 PASS. GET /api/account explicitado en contrato/plan y reanalisis7FR/3SC/18campos sin brechas. Exit0/is_error=false y soloT003 nueva marcada; sinGooglelive. Herramientas/datos previos conservados, sinpush/deploy.

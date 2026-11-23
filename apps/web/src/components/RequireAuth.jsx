@@ -8,7 +8,7 @@ export const DEFAULT_AFTER_AUTH = '/proyectos';
 export const REDIRECT_PARAM = 'siguiente';
 
 const INTERNAL_BASE = 'http://interno.invalid';
-const PRIVATE_PATHS = /^\/proyectos(\/|$)/;
+const PRIVATE_PATHS = /^\/(proyectos(\/|$)|cuenta$)/;
 
 /**
  * Devuelve una ruta privada interna segura o `fallback`. Rechaza URLs

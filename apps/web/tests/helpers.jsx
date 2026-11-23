@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router';
 import { vi } from 'vitest';
 import App from '../src/App.jsx';
+import { AccountProvider } from '../src/api/account.js';
 import { createCatalogResource } from '../src/api/catalog.js';
 import { CatalogProvider } from '../src/hooks/useCatalog.js';
 import { ProjectsProvider } from '../src/api/projects.js';
@@ -42,7 +43,17 @@ export function emptyProjectsClient(overrides = {}) {
   };
 }
 
-export function renderApp(path = '/', { data, fetcher, authClient, authStore, projectsClient } = {}) {
+/** Cliente de cuenta simulado (desde 006/T003): falla si una prueba lo usa sin sustituirlo. */
+export function unusedAccountClient(overrides = {}) {
+  return {
+    fetchAccount: vi.fn(() => Promise.reject(new Error('fetchAccount no simulado'))),
+    startGoogleLink: vi.fn(() => Promise.reject(new Error('startGoogleLink no simulado'))),
+    navigate: vi.fn(),
+    ...overrides,
+  };
+}
+
+export function renderApp(path = '/', { data, fetcher, authClient, authStore, projectsClient, accountClient } = {}) {
   const fetchMock = fetcher ?? vi.fn(() => Promise.resolve(data ?? catalogFixture()));
   const resource = createCatalogResource({ fetcher: fetchMock });
   const auth = authStore ?? createAuthStore({ client: authClient ?? anonymousAuthClient() });
@@ -52,10 +63,12 @@ export function renderApp(path = '/', { data, fetcher, authClient, authStore, pr
     <CatalogProvider resource={resource}>
       <AuthProvider store={auth}>
         <ProjectsProvider client={projects}>
-          <MemoryRouter initialEntries={[path]}>
-            <App />
-            <LocationProbe />
-          </MemoryRouter>
+          <AccountProvider client={accountClient ?? unusedAccountClient()}>
+            <MemoryRouter initialEntries={[path]}>
+              <App />
+              <LocationProbe />
+            </MemoryRouter>
+          </AccountProvider>
         </ProjectsProvider>
       </AuthProvider>
     </CatalogProvider>,

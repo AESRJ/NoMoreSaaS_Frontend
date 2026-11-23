@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { ApiError } from './errors.js';
-import { EmailUnavailableError } from './identities.js';
+import { EmailUnavailableError, IdentityConflictError } from './identities.js';
 import { hashSessionId } from './sessions.js';
 
 // Rutas OIDC de Google bajo /api/auth: providers, google/start y
@@ -18,6 +18,14 @@ const SUBJECT_MAX = 255;
 
 const providerUnavailable = () =>
   new ApiError(503, 'AUTH_PROVIDER_UNAVAILABLE', 'El acceso con Google no está disponible en este momento.');
+// Mismo error público que requireUser (contrato 003) para una sesión que dejó de valer.
+const unauthenticated = () => new ApiError(401, 'UNAUTHENTICATED', 'Necesitas iniciar sesión.');
+const alreadyLinked = () =>
+  new ApiError(409, 'GOOGLE_ALREADY_LINKED', 'Tu cuenta ya tiene una cuenta de Google vinculada.');
+// Mismo error para contraseña incorrecta, malformada o cuenta sin contraseña local.
+// 400 (no 401): la sesión sigue siendo válida; un 401 significaría sesión caducada.
+const invalidPassword = () =>
+  new ApiError(400, 'INVALID_PASSWORD', 'La contraseña actual no es correcta.');
 
 const randomToken = () => randomBytes(RANDOM_BYTES).toString('base64url');
 const sha256Hex = (value) => createHash('sha256').update(value, 'utf8').digest('hex');
@@ -67,9 +75,17 @@ export function createAttemptStore({ db }) {
 }
 
 /**
- * Monta las rutas de Google en el router de /api/auth.
+ * Monta las rutas de Google en el router de /api/auth y, si se pasa
+ * `accountRouter` (/api/account, con sesión), el estado de la cuenta y el
+ * inicio del vínculo con reautenticación por contraseña.
  * @param {import('express').Router} router
  * @param {{
+ *   accountRouter?: import('express').Router,
+ *   requireUser?: import('express').RequestHandler,
+ *   hasher?: { verify: Function, verifyDummy: Function },
+ *   isValidPassword?: (value: unknown) => boolean,
+ *   limitLink?: (req: import('express').Request) => void,
+ *   resetLinkLimit?: (req: import('express').Request) => void,
  *   db: import('node:sqlite').Database,
  *   provider: ReturnType<typeof import('./google.js').createGoogleProvider> | null,
  *   accounts: ReturnType<typeof import('./identities.js').createAccountStore>,
@@ -88,8 +104,27 @@ export function mountGoogleAuth(router, deps) {
   const {
     db, provider, accounts, now, logger, mutationBody, requireCsrf, readFields, limitStart, normalizeEmail,
     establishSession, isSessionCurrent,
+    accountRouter, requireUser, hasher, isValidPassword, limitLink, resetLinkLimit,
   } = deps;
   const attempts = createAttemptStore({ db });
+
+  /** Crea el intento de esta sesión y devuelve la URL de consentimiento. */
+  function beginAttempt(req, { purpose, expectedUserId = null, returnTo }) {
+    const state = randomToken();
+    const nonce = randomToken();
+    const verifier = randomToken();
+    attempts.replace({
+      stateHash: sha256Hex(state),
+      sessionHash: hashSessionId(req.sessionID),
+      nonceHash: sha256Hex(nonce),
+      verifier,
+      purpose,
+      expectedUserId,
+      expiresAt: now() + ATTEMPT_TTL_MS,
+      returnTo,
+    });
+    return provider.authorizationUrl({ state, nonce, codeChallenge: s256(verifier) });
+  }
 
   router.get('/providers', (_req, res) => {
     res.json({ google: { enabled: Boolean(provider) } });
@@ -99,20 +134,73 @@ export function mountGoogleAuth(router, deps) {
     readFields(req.body, []);
     if (!provider) throw providerUnavailable();
     limitStart(req);
-    const state = randomToken();
-    const nonce = randomToken();
-    const verifier = randomToken();
-    attempts.replace({
-      stateHash: sha256Hex(state),
-      sessionHash: hashSessionId(req.sessionID),
-      nonceHash: sha256Hex(nonce),
-      verifier,
-      purpose: 'login',
-      expiresAt: now() + ATTEMPT_TTL_MS,
-      returnTo: 'projects',
-    });
-    res.json({ authorizationUrl: provider.authorizationUrl({ state, nonce, codeChallenge: s256(verifier) }) });
+    res.json({ authorizationUrl: beginAttempt(req, { purpose: 'login', returnTo: 'projects' }) });
   });
+
+  if (accountRouter) {
+    /** Estado privado de la cuenta actual: sin subjects, tokens ni hashes. */
+    accountRouter.get('/', requireUser, (req, res) => {
+      res.json({
+        user: req.user,
+        hasPassword: accounts.passwordHashOf(req.user.id) !== undefined,
+        google: { enabled: Boolean(provider), linked: accounts.providersOf(req.user.id).includes('google') },
+      });
+    });
+
+    /**
+     * Inicio del vínculo: sesión autenticada, Origin/JSON/CSRF y contraseña
+     * local actual. Nunca enlaza por correo; el callback exige el mismo usuario.
+     */
+    accountRouter.post('/google/link/start', ...mutationBody, requireUser, requireCsrf, async (req, res) => {
+      const body = readFields(req.body, ['password']);
+      if (typeof body.password !== 'string') throw invalidPassword();
+      if (!provider) throw providerUnavailable();
+      if (accounts.providersOf(req.user.id).includes('google')) throw alreadyLinked();
+      limitLink(req);
+      const hash = isValidPassword(body.password) ? accounts.passwordHashOf(req.user.id) : undefined;
+      let ok = false;
+      let hashError = null;
+      try {
+        ok = hash ? await hasher.verify(body.password, hash) : await hasher.verifyDummy(body.password);
+      } catch (error) {
+        hashError = error;
+      }
+      // Último await. Antes de responder (éxito, contraseña errónea o fallo del
+      // hasher) se relee la sesión en el mismo tramo síncrono: si durante la
+      // espera hubo logout, rotación a otra cuenta o vencimiento, la respuesta
+      // no toca la sesión (sin Set-Cookie rolling del sid antiguo, sin
+      // save/touch que lo reviva) y no se crea intento.
+      if (!isSessionCurrent(req) || req.session.userId !== req.user.id) {
+        req.session = null;
+        throw unauthenticated();
+      }
+      if (hashError) throw hashError;
+      if (!ok) throw invalidPassword();
+      resetLinkLimit(req);
+      res.json({
+        authorizationUrl: beginAttempt(req, { purpose: 'link', expectedUserId: req.user.id, returnTo: 'account' }),
+      });
+    });
+  }
+
+  /**
+   * Vínculo explícito al usuario esperado. El sub de otro usuario, o un sub
+   * distinto ya vinculado a este, es conflicto sin mutación.
+   */
+  function linkUser(attempt, claims) {
+    try {
+      accounts.linkIdentity({
+        userId: attempt.expected_user_id,
+        provider: 'google',
+        subject: claims.sub,
+        createdAt: new Date(now()).toISOString(),
+      });
+      return { user: { id: attempt.expected_user_id } };
+    } catch (error) {
+      if (error instanceof IdentityConflictError) return { reason: 'google_conflict' };
+      throw error;
+    }
+  }
 
   /** Alta o recuperación por (google, sub); nunca enlaza por correo. */
   function resolveUser(claims) {
@@ -159,8 +247,6 @@ export function mountGoogleAuth(router, deps) {
       if (attempt.return_to === 'account') base = '/cuenta';
       if (attempt.expires_at <= now()) return fail('google_failed');
       if (error !== undefined) return fail(error === 'access_denied' ? 'google_cancelled' : 'google_failed');
-      // El vínculo desde /cuenta (purpose=link) se resuelve en otra tarea.
-      if (attempt.purpose !== 'login') return fail('google_failed');
       if (typeof code !== 'string' || code.length < 1 || code.length > CODE_MAX) return fail('google_failed');
 
       const claims = await provider.exchange({ code, codeVerifier: attempt.verifier });
@@ -177,13 +263,16 @@ export function mountGoogleAuth(router, deps) {
       }
       if (attempt.expires_at <= now()) return fail('google_failed');
       if (!isSessionCurrent(req)) return fail('google_failed');
-      const { user, reason } = resolveUser(claims);
+      const linking = attempt.purpose === 'link';
+      // Vínculo: la sesión debe seguir siendo del usuario que lo inició.
+      if (linking && req.session.userId !== attempt.expected_user_id) return fail('google_failed');
+      const { user, reason } = linking ? linkUser(attempt, claims) : resolveUser(claims);
       if (!user) return fail(reason);
 
       // regenerate destruye el sid original de forma síncrona (store SQLite)
       // antes de su primera cesión; la sesión nueva aún no la conoce nadie.
       await establishSession(req, user.id);
-      return res.redirect(303, '/proyectos');
+      return res.redirect(303, linking ? '/cuenta?reason=google_linked' : '/proyectos');
     } catch (err) {
       // Solo el tipo: los mensajes de la biblioteca pueden contener tokens.
       logger.error('[auth] fallo en el callback de Google:', err && err.name ? err.name : 'Error');

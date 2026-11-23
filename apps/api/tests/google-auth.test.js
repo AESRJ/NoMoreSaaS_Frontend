@@ -75,7 +75,7 @@ function fakeClient() {
   };
 }
 
-function build({ google = true, path = join(dir, 'g.sqlite') } = {}) {
+function build({ google = true, path = join(dir, 'g.sqlite'), hasher = fakeHasher } = {}) {
   const db = openDatabase(path);
   migrate(db);
   const client = fakeClient();
@@ -86,7 +86,7 @@ function build({ google = true, path = join(dir, 'g.sqlite') } = {}) {
     appOrigin: ORIGIN,
     cookieSecure: false,
     now: () => clock,
-    hasher: fakeHasher,
+    hasher,
     logger,
     googleProvider: google
       ? createGoogleProvider({ clientId: CLIENT_ID, clientSecret: 'secreto-cliente', redirectUri: REDIRECT, client })
@@ -475,6 +475,281 @@ describe('GET /api/auth/google/callback', () => {
       expect(raw).not.toContain(secret);
     }
     expect(ctx.logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('vínculo desde /cuenta', () => {
+  const NOW_ISO = '2026-11-22T10:00:00.000Z';
+
+  async function registerLocal(ctx, email) {
+    const agent = request.agent(ctx.app);
+    const res = await post(agent, '/api/auth/register', { email, password: PASSWORD }, await csrfOf(agent));
+    expect(res.status).toBe(201);
+    ctx.db.prepare(
+      'INSERT INTO projects (id, owner_id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(randomUUID(), res.body.user.id, `Proyecto de ${email}`, '', NOW_ISO, NOW_ISO);
+    return { agent, user: res.body.user, csrf: res.body.csrfToken };
+  }
+
+  /** POST link/start con la contraseña dada; con 200 prepara el challenge del cliente simulado. */
+  async function linkStart(ctx, account, password = PASSWORD) {
+    const res = await post(account.agent, '/api/account/google/link/start', { password }, account.csrf);
+    if (res.status === 200) {
+      const params = Object.fromEntries(new URL(res.body.authorizationUrl).searchParams);
+      ctx.client.state.challenge = params.code_challenge;
+      res.params = params;
+    }
+    return res;
+  }
+
+  const snapshot = (db) => ({
+    users: db.prepare('SELECT * FROM users ORDER BY id').all(),
+    creds: db.prepare('SELECT * FROM password_credentials ORDER BY user_id').all(),
+    projects: db.prepare('SELECT * FROM projects ORDER BY id').all(),
+  });
+
+  it('GET /api/account informa contraseña y vínculo sin subjects; exige sesión', async () => {
+    const ctx = build();
+    expect((await request(ctx.app).get('/api/account')).status).toBe(401);
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    const res = await ana.agent.get('/api/account');
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body).toEqual({ user: ana.user, hasPassword: true, google: { enabled: true, linked: false } });
+    const off = build({ google: false, path: join(dir, 'off.sqlite') });
+    const bea = await registerLocal(off, 'bea@example.com');
+    expect((await bea.agent.get('/api/account')).body.google).toEqual({ enabled: false, linked: false });
+  });
+
+  it('link/start exige sesión, Origin, CSRF, contraseña actual y Google configurado', async () => {
+    const ctx = build();
+    const anon = request.agent(ctx.app);
+    const anonToken = await csrfOf(anon);
+    expect((await post(anon, '/api/account/google/link/start', { password: PASSWORD }, anonToken)).status).toBe(401);
+
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    const path = '/api/account/google/link/start';
+    expect((await post(ana.agent, path, { password: PASSWORD }, ana.csrf, { origin: 'http://evil.example' })).body.error.code).toBe('FORBIDDEN_ORIGIN');
+    expect((await post(ana.agent, path, { password: PASSWORD }, 'otro')).body.error.code).toBe('CSRF_INVALID');
+    expect((await post(ana.agent, path, { password: PASSWORD, email: 'x@y.z' }, ana.csrf)).status).toBe(400);
+    for (const password of [`${PASSWORD}x`, 'corta', 5]) {
+      const res = await post(ana.agent, path, { password }, ana.csrf);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_PASSWORD');
+    }
+    expect(count(ctx.db, 'oauth_attempts')).toBe(0);
+
+    const ok = await linkStart(ctx, ana);
+    expect(ok.status).toBe(200);
+    expect(ok.params).toMatchObject({ client_id: CLIENT_ID, redirect_uri: REDIRECT, code_challenge_method: 'S256' });
+    expect(ctx.db.prepare('SELECT purpose, expected_user_id, return_to FROM oauth_attempts').get()).toEqual({
+      purpose: 'link', expected_user_id: ana.user.id, return_to: 'account',
+    });
+
+    const off = build({ google: false, path: join(dir, 'off.sqlite') });
+    const bea = await registerLocal(off, 'bea@example.com');
+    expect((await post(bea.agent, path, { password: PASSWORD }, bea.csrf)).status).toBe(503);
+  });
+
+  it('5 contraseñas erróneas por cuenta en 15 min → 429', async () => {
+    const ctx = build();
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    for (let i = 0; i < 5; i += 1) expect((await linkStart(ctx, ana, `${PASSWORD}!`)).status).toBe(400);
+    expect((await linkStart(ctx, ana)).status).toBe(429);
+  });
+
+  it('vincula a la cuenta que lo inició (correo Google distinto), rota sesión y conserva proyectos/credenciales', async () => {
+    const ctx = build();
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    const before = snapshot(ctx.db);
+    const { params } = await linkStart(ctx, ana);
+    ctx.client.state.claims = { sub: 'g-ana', email: 'ana.personal@gmail.example', email_verified: true, nonce: params.nonce };
+    const res = await callback(ana.agent, { state: params.state, code: 'c' });
+
+    expectRedirect(res, '/cuenta?reason=google_linked');
+    expect(sessionCookie(res)).toBeDefined();
+    const me = (await ana.agent.get('/api/auth/session')).body;
+    expect(me.user).toEqual(ana.user);
+    expect(me.csrfToken).not.toBe(ana.csrf);
+    expect(ctx.db.prepare('SELECT provider, subject, user_id FROM external_identities').all()).toEqual([
+      { provider: 'google', subject: 'g-ana', user_id: ana.user.id },
+    ]);
+    expect(snapshot(ctx.db)).toEqual(before);
+    expect((await ana.agent.get('/api/account')).body.google).toEqual({ enabled: true, linked: true });
+    // Ya vinculada: 409 sin crear intento.
+    const again = await post(ana.agent, '/api/account/google/link/start', { password: PASSWORD }, me.csrfToken);
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('GOOGLE_ALREADY_LINKED');
+    expect(count(ctx.db, 'oauth_attempts')).toBe(0);
+
+    // Entrar con ese Google recupera la misma cuenta; la contraseña local sigue sirviendo.
+    const other = request.agent(ctx.app);
+    const login = await start(ctx, other);
+    ctx.client.state.claims = { sub: 'g-ana', email: 'cambiado@example.com', email_verified: true, nonce: login.params.nonce };
+    expectRedirect(await callback(other, { state: login.params.state, code: 'c' }), '/proyectos');
+    expect((await other.get('/api/auth/session')).body.user).toEqual(ana.user);
+    const local = request.agent(ctx.app);
+    expect((await post(local, '/api/auth/login', { email: 'ana@example.com', password: PASSWORD }, await csrfOf(local))).status).toBe(200);
+  });
+
+  it('Google ya vinculado a otra cuenta: google_conflict sin mutación ni cookie; ambas cuentas intactas', async () => {
+    const ctx = build();
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    const bea = await registerLocal(ctx, 'bea@example.com');
+    createAccountStore({ db: ctx.db }).linkIdentity({ userId: bea.user.id, provider: 'google', subject: 'g-bea', createdAt: NOW_ISO });
+    const before = { ...snapshot(ctx.db), ids: ctx.db.prepare('SELECT * FROM external_identities').all() };
+    const { params } = await linkStart(ctx, ana);
+    ctx.client.state.claims = { sub: 'g-bea', email: 'ana@example.com', email_verified: true, nonce: params.nonce };
+    const res = await callback(ana.agent, { state: params.state, code: 'c' });
+
+    expectRedirect(res, '/cuenta?reason=google_conflict');
+    expect(sessionCookie(res)).toBeUndefined();
+    expect({ ...snapshot(ctx.db), ids: ctx.db.prepare('SELECT * FROM external_identities').all() }).toEqual(before);
+    // Ana sigue con su sesión y sin vínculo; Bea conserva el suyo.
+    expect((await ana.agent.get('/api/auth/session')).body.user).toEqual(ana.user);
+    expect((await ana.agent.get('/api/account')).body.google.linked).toBe(false);
+    expect((await bea.agent.get('/api/account')).body.google.linked).toBe(true);
+  });
+
+  it('cambio de cuenta entre inicio y callback, o cancelación: sin vínculo y motivo fijo en /cuenta', async () => {
+    const ctx = build();
+    const ana = await registerLocal(ctx, 'ana@example.com');
+    await registerLocal(ctx, 'bea@example.com');
+    let { params } = await linkStart(ctx, ana);
+    // Ana sale y Bea entra en el mismo navegador: el intento muere con la sesión de Ana.
+    expect((await post(ana.agent, '/api/auth/logout', {}, ana.csrf)).status).toBe(204);
+    const bea = await post(ana.agent, '/api/auth/login', { email: 'bea@example.com', password: PASSWORD }, await csrfOf(ana.agent));
+    ctx.client.state.claims = { sub: 'g-x', email: 'x@example.com', email_verified: true, nonce: params.nonce };
+    expectRedirect(await callback(ana.agent, { state: params.state, code: 'c' }), '/entrar?reason=google_failed');
+    expect(count(ctx.db, 'external_identities')).toBe(0);
+    expect((await ana.agent.get('/api/auth/session')).body.user).toEqual(bea.body.user);
+
+    const cancel = { agent: ana.agent, csrf: bea.body.csrfToken };
+    ({ params } = await linkStart(ctx, cancel));
+    const res = await callback(ana.agent, { state: params.state, error: 'access_denied' });
+    expectRedirect(res, '/cuenta?reason=google_cancelled');
+    expect(sessionCookie(res)).toBeUndefined();
+    expect(count(ctx.db, 'external_identities')).toBe(0);
+    expect(ctx.client.state.calls).toBe(0);
+  });
+
+  describe('respuesta tardía de link/start (hasher diferido)', () => {
+    /**
+     * Hasher cuyo verify se bloquea cuando `armed`; registro/login no se bloquean.
+     * `fail` hace que el verify bloqueado lance en lugar de responder.
+     */
+    function gatedHasher() {
+      const gate = { armed: false, entered: 0, release: null, fail: false };
+      const hasher = {
+        hash: fakeHasher.hash,
+        verifyDummy: fakeHasher.verifyDummy,
+        async verify(password, encoded) {
+          if (gate.armed) {
+            gate.armed = false;
+            gate.entered += 1;
+            await new Promise((resolve) => { gate.release = resolve; });
+            if (gate.fail) throw new Error('fallo interno del hasher');
+          }
+          return fakeHasher.verify(password, encoded);
+        },
+      };
+      return { gate, hasher };
+    }
+
+    async function pendingLinkStart(ctx, gate, account, password) {
+      gate.armed = true;
+      const done = post(account.agent, '/api/account/google/link/start', { password }, account.csrf).then((r) => r);
+      for (let i = 0; i < 200 && gate.entered === 0; i += 1) await new Promise((r) => setTimeout(r, 5));
+      expect(gate.entered).toBe(1);
+      gate.entered = 0;
+      return { done }; // envuelto: devolver la promesa la aplanaría en el await
+    }
+    const sids = (db) => db.prepare('SELECT id_hash FROM sessions ORDER BY id_hash').all().map((r) => r.id_hash);
+
+    function expectStale(res, ctx) {
+      expect(sessionCookie(res), 'Set-Cookie del sid antiguo').toBeUndefined();
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHENTICATED');
+      expect(count(ctx.db, 'oauth_attempts')).toBe(0);
+      expect(count(ctx.db, 'external_identities')).toBe(0);
+    }
+
+    it.each([
+      ['contraseña correcta', PASSWORD],
+      ['contraseña incorrecta', `${PASSWORD}!`],
+    ])('%s y rotación a otra cuenta durante el hash: ni intento ni cookie antigua; B sigue vigente', async (_name, password) => {
+      const { gate, hasher } = gatedHasher();
+      const ctx = build({ hasher });
+      const ana = await registerLocal(ctx, 'ana@example.com');
+      await registerLocal(ctx, 'bea@example.com');
+      const { done } = await pendingLinkStart(ctx, gate, ana, password);
+
+      expect((await post(ana.agent, '/api/auth/logout', {}, ana.csrf)).status).toBe(204);
+      const bea = await post(ana.agent, '/api/auth/login', { email: 'bea@example.com', password: PASSWORD }, await csrfOf(ana.agent));
+      expect(bea.status).toBe(200);
+      const beaCookie = sessionCookie(bea).split(';')[0];
+      const before = sids(ctx.db);
+      gate.release();
+      const res = await done;
+
+      expectStale(res, ctx);
+      expect(sids(ctx.db)).toEqual(before);
+      expect((await request(ctx.app).get('/api/auth/session').set('Cookie', beaCookie)).body.user).toEqual(bea.body.user);
+      expect((await ana.agent.get('/api/auth/session')).body.user).toEqual(bea.body.user);
+    });
+
+    it('logout durante el hash: el sid revocado no revive', async () => {
+      const { gate, hasher } = gatedHasher();
+      const ctx = build({ hasher });
+      const ana = await registerLocal(ctx, 'ana@example.com');
+      const { done } = await pendingLinkStart(ctx, gate, ana, PASSWORD);
+      expect((await post(ana.agent, '/api/auth/logout', {}, ana.csrf)).status).toBe(204);
+      gate.release();
+      expectStale(await done, ctx);
+      expect(count(ctx.db, 'sessions')).toBe(0);
+    });
+
+    it('la sesión vence durante el hash: rechazo sin revivirla', async () => {
+      const { gate, hasher } = gatedHasher();
+      const ctx = build({ hasher });
+      const ana = await registerLocal(ctx, 'ana@example.com');
+      const { done } = await pendingLinkStart(ctx, gate, ana, PASSWORD);
+      ctx.db.prepare('UPDATE sessions SET expires_at = ?').run(clock);
+      gate.release();
+      expectStale(await done, ctx);
+      expect(count(ctx.db, 'sessions')).toBe(0);
+    });
+
+    it('error del hasher con la sesión ya revocada: 401 sin cookie; con sesión vigente, error genérico', async () => {
+      const { gate, hasher } = gatedHasher();
+      const ctx = build({ hasher });
+      const ana = await registerLocal(ctx, 'ana@example.com');
+      gate.fail = true;
+      let { done } = await pendingLinkStart(ctx, gate, ana, PASSWORD);
+      expect((await post(ana.agent, '/api/auth/logout', {}, ana.csrf)).status).toBe(204);
+      gate.release();
+      expectStale(await done, ctx);
+
+      const bea = await registerLocal(ctx, 'bea@example.com');
+      ({ done } = await pendingLinkStart(ctx, gate, bea, PASSWORD));
+      gate.release();
+      const res = await done;
+      expect(res.status).toBe(500);
+      expect(res.text).not.toMatch(/hasher|fallo interno/);
+      expect(count(ctx.db, 'oauth_attempts')).toBe(0);
+      expect((await bea.agent.get('/api/auth/session')).body.user).toEqual(bea.user);
+    });
+  });
+
+  it('una cuenta solo-Google no puede iniciar otro vínculo', async () => {
+    const ctx = build();
+    const agent = request.agent(ctx.app);
+    const { params } = await start(ctx, agent);
+    ctx.client.state.claims = { sub: 'g-only', email: 'solo@example.com', email_verified: true, nonce: params.nonce };
+    await callback(agent, { state: params.state, code: 'c' });
+    const token = await csrfOf(agent);
+    expect((await agent.get('/api/account')).body).toMatchObject({ hasPassword: false, google: { linked: true } });
+    expect((await post(agent, '/api/account/google/link/start', { password: PASSWORD }, token)).status).toBe(409);
   });
 });
 

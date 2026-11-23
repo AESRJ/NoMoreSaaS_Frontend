@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout.jsx';
 import { RequireAuth } from './components/RequireAuth.jsx';
+import { AccountPage } from './pages/AccountPage.jsx';
 import { AlternativePage } from './pages/AlternativePage.jsx';
 import { CatalogPage } from './pages/CatalogPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
@@ -12,7 +13,7 @@ import { RegisterPage } from './pages/RegisterPage.jsx';
 import { ServicePage } from './pages/ServicePage.jsx';
 import { WorkflowPage } from './pages/WorkflowPage.jsx';
 
-// React Router en modo declarativo. /proyectos/* solo con sesión (RequireAuth).
+// React Router en modo declarativo. /cuenta y /proyectos/* solo con sesión (RequireAuth).
 export default function App() {
   return (
     <Routes>
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="entrar" element={<LoginPage />} />
         <Route path="registro" element={<RegisterPage />} />
         <Route element={<RequireAuth />}>
+          <Route path="cuenta" element={<AccountPage />} />
           <Route path="proyectos" element={<ProjectsPage />} />
           <Route path="proyectos/nuevo" element={<ProjectFormPage />} />
           <Route path="proyectos/:id" element={<ProjectPage />} />

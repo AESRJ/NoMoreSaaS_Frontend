@@ -21,6 +21,9 @@ export const DEFAULT_LIMITS = Object.freeze({
   loginPerIp: { limit: 20, windowMs: WINDOW_MS },
   registerPerIp: { limit: 10, windowMs: WINDOW_MS },
   googleStartPerIp: { limit: 20, windowMs: WINDOW_MS },
+  // Reautenticación para vincular Google: mismo umbral que el login por correo.
+  linkPerUser: { limit: 5, windowMs: WINDOW_MS },
+  linkPerIp: { limit: 20, windowMs: WINDOW_MS },
   maxKeys: 10000,
 });
 
@@ -179,6 +182,8 @@ export function createAuth({
     loginPerIp: limiterOf(cfg.loginPerIp),
     registerPerIp: limiterOf(cfg.registerPerIp),
     googleStartPerIp: limiterOf(cfg.googleStartPerIp),
+    linkPerUser: limiterOf(cfg.linkPerUser),
+    linkPerIp: limiterOf(cfg.linkPerIp),
   };
 
   const store = new SqliteSessionStore({ db, now });
@@ -356,7 +361,20 @@ export function createAuth({
     res.status(204).end();
   });
 
+  // /api/account: datos privados de la cuenta actual (misma sesión y guardas).
+  const accountRouter = express.Router();
+  accountRouter.use(noStore, sessionMiddleware, capCookie);
+
   const google = mountGoogleAuth(router, {
+    accountRouter,
+    requireUser,
+    hasher,
+    isValidPassword,
+    limitLink: (req) => {
+      limit(limiters.linkPerIp, req.ip);
+      limit(limiters.linkPerUser, req.user.id);
+    },
+    resetLinkLimit: (req) => limiters.linkPerUser.reset(req.user.id),
     db,
     provider: googleProvider,
     accounts,
@@ -380,6 +398,7 @@ export function createAuth({
     next(publicError);
   }
   router.use(mapPublicErrors);
+  accountRouter.use(mapPublicErrors);
 
   // Limpieza periódica de sesiones vencidas y claves caducadas del limitador.
   const timer = setInterval(() => {
@@ -395,6 +414,7 @@ export function createAuth({
 
   return {
     router,
+    accountRouter,
     session: sessionMiddleware,
     capCookie,
     noStore,

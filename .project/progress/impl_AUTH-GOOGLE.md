@@ -49,3 +49,32 @@ Límites: timeout de 20 s del caso «24 h» se mantiene localizado (no global), 
 - `apps/api/tests/google-auth.test.js`: caso determinista «sin cesión…»: una microtarea encolada al releer el store debe ver identidad creada y sid original destruido. Con `await` temporal en la relectura falla (`{oldSession:1, identities:0}`); restaurado, pasa.
 
 Comandos y resultados: `vitest run tests/google-auth.test.js` 24/24; google-auth+auth+api+projects 156/156; `pnpm lint` OK. API completa no repetida (cambio localizado, sin fallos). Sin Google vivo. Sin git add/commit.
+
+## T003 — vínculo Google desde /cuenta (Claude, 2026-11-22)
+API:
+- `apps/api/src/google-auth.js`: `beginAttempt` común; `GET /api/account` → `{user, hasPassword, google:{enabled, linked}}` (sin subjects/tokens/hashes); `POST /api/account/google/link/start` {password}: sesión, Origin/JSON/CSRF, 503 sin config, 409 `GOOGLE_ALREADY_LINKED` sin intento, límites 5/15 min por usuario y 20 por IP, Argon2 o dummy y 400 `INVALID_PASSWORD` genérico (no 401, que la web trata como sesión caducada); tras el hash recomprueba la sesión antes de emitir el intento purpose=link, expected_user_id, return_to=account. Callback link: además de las comprobaciones T002, exige `session.userId === expected_user_id`; `linkIdentity` (conflicto → `/cuenta?reason=google_conflict` sin mutación ni Set-Cookie; mismo vínculo idempotente); éxito rota sesión del mismo usuario → `/cuenta?reason=google_linked`; cancelación → `/cuenta?reason=google_cancelled`. Sin autoenlace por correo.
+- `apps/api/src/auth.js`: `accountRouter` con noStore/sesión/capCookie y mapeo de errores; limitadores `linkPerUser`/`linkPerIp`. `apps/api/src/app.js`: monta `/api/account`.
+Web:
+- `apps/web/src/api/account.js` (nuevo): fetchAccount validado, startGoogleLink solo acepta URL `https://accounts.google.com`, navegación de página completa, provider inyectable.
+- `apps/web/src/pages/AccountPage.jsx` (nuevo) y ruta `/cuenta` protegida (`App.jsx`, `RequireAuth.jsx` admite `/cuenta` como destino); enlace «Mi cuenta» en cabecera (`Layout.jsx`). Estados: sin vincular con formulario de contraseña actual (withCsrf, 401→expireSession, error en campo), vinculada, no disponible sin botón, motivos fijos con aviso y URL limpia (otros valores ignorados). Estilos en `styles.css` con la paleta existente (`page-notice--info`, `account-*`). Impeccable: launcher requirió aprobación no disponible; se leyó `craft-floor.md` y se aplicaron sus guías.
+Pruebas: `apps/api/tests/google-auth.test.js` (+7 de vínculo, 2 usuarios con proyectos/credenciales), `apps/web/tests/account.test.jsx` (nuevo, 12), `apps/web/tests/helpers.jsx` (cliente de cuenta inyectable), `tests/e2e/account.spec.js` (nuevo).
+
+Comandos y resultados:
+- `vitest run tests/google-auth.test.js` (API) → 31/31; google-auth+auth+api+projects+security → 166/166.
+- web `vitest run tests/account.test.jsx tests/auth.test.jsx` → 68/68; web completa → 176/176.
+- `pnpm lint` OK; `pnpm build` OK.
+- `pnpm exec playwright test tests/e2e/account.spec.js tests/e2e/identity.spec.js` (3501/5773 heredados, DB temporal): identity 8/8, account 0/2 por enlace de cabecera que no conserva `?siguiente` en /entrar (comportamiento previo); ajustado al enlace de la página → account 2/2 (360 y 1280, sin desbordamiento). Capturas `.local/screenshots/cuenta-{movil-360,escritorio-1280}.png`.
+- check_handoff OK.
+
+Límites: e2e sin Google configurado (solo estado «No disponible»); el formulario de vínculo y los estados vinculada/errores se verifican con jsdom y la API con cliente simulado. Sin Google vivo. `GET /api/account` no figura en el contrato: se añadió como lectura mínima para que /cuenta informe el vínculo (a revisar por Codex). e2e añade 2 registros por ejecución (identity ≤8 + 2 = 10, límite 10/IP/15 min en una ejecución completa). Sin git add/commit.
+
+## T003 — corrección Codex: respuesta tardía de link/start (Claude, 2026-11-22)
+- `apps/api/src/google-auth.js`: link/start captura el resultado o error del hasher y, tras ese último await y antes de responder, relee la sesión (`isSessionCurrent` + mismo userId). Si hubo logout, rotación o vencimiento: `req.session = null` (sin Set-Cookie rolling, sin save/touch) y 401 `UNAUTHENTICATED` (error de 003), sin intento ni vínculo; con sesión vigente sigue 400 `INVALID_PASSWORD`, error del hasher → 500 genérico, o éxito.
+- `apps/web/src/pages/AccountPage.jsx`: `?reason=` solo con claves propias (`Object.hasOwn`); toString/__proto__/constructor/hasOwnProperty se ignoran.
+- Pruebas: `apps/api/tests/google-auth.test.js` (hasher diferido; 5 casos: rotación a B con contraseña correcta e incorrecta, logout, vencimiento, error del hasher con sesión revocada y con sesión vigente; aserciones de Set-Cookie, sessions, oauth_attempts, external_identities y usuario de la cookie de B). `apps/web/tests/account.test.jsx`: test de motivo desconocido ampliado a 5 valores (incluidos heredados) y URL limpia.
+
+Comandos y resultados:
+- Antes de corregir: `vitest run tests/google-auth.test.js -t "respuesta tardía"` → 5/5 fallan; las respuestas emitían `Set-Cookie: nomoresaas.sid=…` del sid antiguo (y 400/500 en lugar de rechazo de sesión).
+- Tras corregir: google-auth 36/36; auth+api+security 91/91; web account 16/16; `pnpm lint` OK. Suite web/build/e2e no repetidas (solo cambia la lectura de `reason`, cubierta por su test).
+
+Límites: sin Google vivo. Sin git add/commit.

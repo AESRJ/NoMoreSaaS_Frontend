@@ -26,6 +26,7 @@ export function createApp({ catalog, logger = console, auth, projects }) {
   app.use(helmet());
 
   if (auth) app.use('/api/auth', auth.router);
+  if (auth?.accountRouter) app.use('/api/account', auth.accountRouter);
   if (projects) app.use('/api/projects', projects.router);
 
   const api = express.Router();
