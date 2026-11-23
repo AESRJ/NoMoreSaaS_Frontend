@@ -13,7 +13,7 @@ Repositorio de codigo separado de [la planificacion y arnes maestro](https://git
 - Catalogo publico de alternativas autoalojables (5 SaaS, 5 alternativas curadas con fuentes oficiales y fecha), busqueda y fichas con fuentes. Sigue sin requerir cuenta.
 - Exploracion por servicio (entrega 005): se parte del servicio que se usa; cada servicio es un circulo que despliega el arbol de sus alternativas y, al elegir una, la comparativa servicio/alternativa en la misma pagina (con fuentes oficiales y datos desconocidos marcados como tales). La comparacion global y `/comparar` se retiraron; esa ruta redirige al catalogo. Crear/editar proyecto tambien parte de buscar el servicio y muestra chips «servicio → alternativa».
 - Cuentas y proyectos privados (entrega 003): registro, entrada y salida con correo y contrasena (Argon2id, sesion de servidor persistente en SQLite, cookie HttpOnly/SameSite=Lax, CSRF sincronizador). Cada cuenta crea, edita y borra (con confirmacion) hasta 100 proyectos con nombre, descripcion y 1-10 alternativas del catalogo; nadie mas puede verlos. Sin verificacion o recuperacion de correo, borrado de cuenta, instalacion de servicios ni despliegue.
-- Acceso con Google (entrega 006): «Continuar con Google» en entrar/registro y vinculacion desde «Mi cuenta» con la contraseña actual (OIDC de servidor, sin SDK ni tokens en el navegador). Una coincidencia de correo nunca vincula cuentas. Solo se activa con `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI`; sin ellas no aparece el boton. La migracion 003 separa las contraseñas en `password_credentials` y conserva usuarios, hashes y proyectos (respaldar la DB antes de `pnpm db:migrate`). El acceso real con Google sigue sin probar: guia en `.project/docs/setup-google.md`.
+- Acceso con Google: retirado por decision del usuario (2026-11-22). Solo correo y contraseña. Las tablas de la migracion 003 se conservan sin uso para no perder datos; las cuentas creadas solo con Google ya no pueden entrar.
 
 ## Flujo final disponible (004)
 
@@ -57,8 +57,12 @@ pnpm test:e2e                    # Playwright: API (DB y secreto temporales) y w
 
 - El servicio y la alternativa abiertos en la portada no se guardan en la URL; solo la busqueda (`?q=`) es compartible.
 - La comparativa no publica precios ni paridad de funciones: lo que el catalogo no documenta del servicio SaaS se muestra como desconocido.
-- No hay hosting de produccion: el proxy `/api` solo existe en el servidor de desarrollo de Vite. Antes de produccion faltan HTTPS, verificacion/recuperacion de correo, borrado de cuenta y operacion.
+- Produccion: ver «Despliegue en Railway». Siguen pendientes verificacion/recuperacion de correo y borrado de cuenta.
 - SQLite local de un solo proceso; los limitadores de intentos viven en memoria y se reinician con la API.
 - Accesibilidad comprobada en recorridos de teclado y nombres accesibles; no es una auditoria WCAG completa.
 
 Ejecutar `init.cmd` (Python 3.12 para el verificador de la entrega): valida por defecto la entrega actual (puntero local `.specify/feature.json` o, en un clon sin el, `.project/identity-source.json`); `init.cmd --handoff .project/handoffs/002-catalogo-comparacion.json` revisa la entrega anterior. Leer `.project/context.md` antes de trabajar. Configuraciones MCP propias de la maquina son locales e ignoradas. La aplicacion no depende de Python ni de NotebookLM para ejecutarse.
+
+## Despliegue en Railway
+
+El repositorio incluye `Dockerfile`, `docker-entrypoint.sh` y `railway.json`. En produccion (`NODE_ENV=production`) Express sirve `apps/web/dist` y la API en el mismo origen, escucha en `0.0.0.0:$PORT` y confia en un solo proxy (el borde HTTPS de Railway; ajustable con `TRUST_PROXY_HOPS`). El arranque prepara `/data/nomoresaas`, baja a usuario `node`, migra y arranca. Pasos y variables: `.project/docs/deployment-railway.md`.
