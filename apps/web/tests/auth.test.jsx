@@ -438,7 +438,9 @@ describe('formulario de entrada', () => {
     expect(passwordInput()).not.toHaveAttribute('maxlength');
     expect(emailInput()).not.toHaveAttribute('maxlength');
     expect(document.title).toBe('Entrar · NoMoreSaaS');
-    expect(screen.queryByText(/olvidaste|recuperar|google|github/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/olvidaste|recuperar|github/i)).not.toBeInTheDocument();
+    // Desde 006 Google solo aparece si la API lo confirma; aquí no está configurado: sin botón.
+    expect(screen.queryByRole('button', { name: /google/i })).not.toBeInTheDocument();
   });
 
   it('login correcto: redirige a /proyectos y muestra la identidad', async () => {

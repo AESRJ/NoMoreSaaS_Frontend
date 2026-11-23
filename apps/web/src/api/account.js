@@ -1,10 +1,10 @@
 import { createContext, createElement, useContext } from 'react';
-import { AuthRequestError, send } from './auth.js';
+import { AuthRequestError, safeGoogleAuthorizationUrl, send } from './auth.js';
 
 // Cliente de /api/account (cuenta propia y vínculo Google). No guarda nada:
 // la URL de Google solo se usa para navegar y jamás se persisten tokens.
 
-export const GOOGLE_AUTHORIZATION_ORIGIN = 'https://accounts.google.com';
+export { GOOGLE_AUTHORIZATION_ORIGIN, safeGoogleAuthorizationUrl } from './auth.js';
 const INVALID_MESSAGE = 'El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.';
 
 /** Estado de la cuenta: {hasPassword, google:{enabled, linked}} validado. */
@@ -20,17 +20,6 @@ export async function fetchAccount({ signal } = {}) {
     throw new AuthRequestError('invalid', INVALID_MESSAGE);
   }
   return { hasPassword: data.hasPassword, google: { enabled: data.google.enabled, linked: data.google.linked } };
-}
-
-/** Acepta solo una URL https del host de autorización de Google. */
-export function safeGoogleAuthorizationUrl(value) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    return url.origin === GOOGLE_AUTHORIZATION_ORIGIN ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 /** POST /api/account/google/link/start con la contraseña actual → URL de Google. */

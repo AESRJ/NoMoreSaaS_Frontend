@@ -78,3 +78,20 @@ Comandos y resultados:
 - Tras corregir: google-auth 36/36; auth+api+security 91/91; web account 16/16; `pnpm lint` OK. Suite web/build/e2e no repetidas (solo cambia la lectura de `reason`, cubierta por su test).
 
 Límites: sin Google vivo. Sin git add/commit.
+
+## T004 — «Continuar con Google» en /entrar y /registro (Claude, 2026-11-22)
+Archivos:
+- `apps/web/src/api/auth.js`: `fetchProviders` (solo el booleano), `startGoogleLogin` (POST `{}` con CSRF), `safeGoogleAuthorizationUrl` (solo `https://accounts.google.com`, movida aquí y reexportada por `api/account.js`), `navigate` de página completa en el cliente por defecto.
+- `apps/web/src/store/auth.js`: `googleLogin` (unknown/loading/enabled/disabled/error), `loadProviders` una vez con reintento tras error, `startGoogleLogin` (403 renueva sin reenviar; 503 pasa a disabled). Sin tokens ni URL en estado persistente.
+- `apps/web/src/components/GoogleSignIn.jsx` (nuevo): botón con marca «G» oficial y separador «o con tu correo» solo si la API confirma Google; aviso discreto si no está configurado o no se pudo comprobar (con «Volver a comprobar»). `apps/web/src/pages/AuthPage.jsx`: integra botón/aviso y motivos fijos de callback (google_cancelled/failed/conflict, claves propias) con URL limpia que conserva `?siguiente`. Formulario local intacto como alternativa.
+- `apps/web/src/styles.css`: variante oscura de las pautas de Google (#131314/#8E918F/#E3E3E3), separador, nota y `.link-button`; paleta existente. Impeccable: guías de `craft-floor.md` aplicadas (launcher sin aprobación en sesiones previas).
+- `.env.example`: GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI vacías con reglas. `.project/docs/setup-google.md`: estado actual (código listo, inactivo sin variables, sin prueba viva) y reglas de variables/callback.
+- Pruebas: `apps/web/tests/google-login.test.jsx` (nuevo, 17), `apps/web/tests/helpers.jsx` (Google desactivado por defecto), `apps/web/tests/auth.test.jsx` (aserción 003 que prohibía «google» ajustada: sin botón si no está configurado), `tests/e2e/google-login.spec.js` (nuevo).
+
+Comandos y resultados:
+- web `vitest run tests/google-login.test.jsx tests/account.test.jsx tests/auth.test.jsx` → 86/87 (aserción 003 citada) → ajustada; web completa 195/195.
+- `pnpm lint` OK; `pnpm build` OK.
+- `pnpm exec playwright test tests/e2e/google-login.spec.js tests/e2e/account.spec.js tests/e2e/identity.spec.js` (3501/5773 heredados, DB temporal) → 14/14 en 360 y 1280. Borde del botón no visible en la captura (especificidad frente a `.button`), corregido con doble clase; google-login 4/4 tras el cambio. Capturas `.local/screenshots/google-entrar-{movil-360,escritorio-1280}.png`.
+- check_handoff OK.
+
+Límites: e2e real sin Google configurado (sin botón, aviso, callback real → `/entrar` con google_failed). Botón y salida a Google verificados con respuestas fixture interceptadas en el navegador (`page.route`), sin peticiones a Google. Sin prueba viva con Google: requiere cliente/consentimiento reales. Tras Google el destino es `/proyectos` (no conserva `?siguiente`, según contrato). Sin git add/commit.

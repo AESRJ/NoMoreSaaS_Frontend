@@ -640,6 +640,70 @@ main:focus {
   margin-bottom: 0;
 }
 
+/* Continuar con Google: variante oscura de las pautas de marca de Google
+   (fondo #131314, borde #8E918F, texto #E3E3E3) sobre la paleta negra. */
+.google-signin {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+/* .button se declara más abajo: doble clase para que el borde no se pierda. */
+.button.button--google {
+  width: 100%;
+  gap: 0.65rem;
+  background: #131314;
+  border: 1px solid #8e918f;
+  color: #e3e3e3;
+  font-weight: 600;
+}
+
+.button.button--google:hover {
+  background: var(--surface-alt);
+  border-color: #c4c7c5;
+}
+
+.google-mark {
+  flex: none;
+}
+
+.google-signin__divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.google-signin__divider::before,
+.google-signin__divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line-strong);
+}
+
+.google-note {
+  margin: 0.75rem 0 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.auth-page__notice {
+  margin-bottom: 1.25rem;
+}
+
 .page-notice--info {
   border-color: var(--info-line);
   background: var(--info-bg);

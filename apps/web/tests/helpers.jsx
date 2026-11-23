@@ -22,6 +22,10 @@ export function anonymousAuthClient(overrides = {}) {
     register: vi.fn(() => Promise.reject(new Error('register no simulado'))),
     login: vi.fn(() => Promise.reject(new Error('login no simulado'))),
     logout: vi.fn(() => Promise.resolve()),
+    // Desde 006/T004: Google desactivado por defecto (sin botón) salvo sustitución.
+    fetchProviders: vi.fn(() => Promise.resolve({ google: { enabled: false } })),
+    startGoogleLogin: vi.fn(() => Promise.reject(new Error('startGoogleLogin no simulado'))),
+    navigate: vi.fn(),
     ...overrides,
   };
 }

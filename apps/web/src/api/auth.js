@@ -136,4 +136,43 @@ export async function logout({ csrfToken }) {
   await send('/api/auth/logout', { method: 'POST', body: {}, csrfToken });
 }
 
-export const defaultAuthClient = Object.freeze({ fetchSession, register, login, logout });
+export const GOOGLE_AUTHORIZATION_ORIGIN = 'https://accounts.google.com';
+
+/** Acepta solo una URL https del host de autorización de Google. */
+export function safeGoogleAuthorizationUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.origin === GOOGLE_AUTHORIZATION_ORIGIN ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** GET /api/auth/providers → {google:{enabled}}; solo el indicador booleano. */
+export async function fetchProviders({ signal } = {}) {
+  const data = await send('/api/auth/providers', { signal });
+  if (!data || !data.google || typeof data.google.enabled !== 'boolean') {
+    throw new AuthRequestError('invalid', INVALID_MESSAGE);
+  }
+  return { google: { enabled: data.google.enabled } };
+}
+
+/** POST /api/auth/google/start (cuerpo vacío, CSRF) → URL de consentimiento de Google. */
+export async function startGoogleLogin({ csrfToken }) {
+  const data = await send('/api/auth/google/start', { method: 'POST', body: {}, csrfToken });
+  const url = safeGoogleAuthorizationUrl(data && data.authorizationUrl);
+  if (!url) throw new AuthRequestError('invalid', INVALID_MESSAGE);
+  return url;
+}
+
+export const defaultAuthClient = Object.freeze({
+  fetchSession,
+  register,
+  login,
+  logout,
+  fetchProviders,
+  startGoogleLogin,
+  // Navegación de página completa hacia Google (sin SDK, popup ni iframe).
+  navigate: (url) => window.location.assign(url),
+});

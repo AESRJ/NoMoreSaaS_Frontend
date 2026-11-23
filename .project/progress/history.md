@@ -99,3 +99,9 @@ link/start relee la sesión tras el hash; respuesta obsoleta → 401 sin Set-Coo
 
 ## 2026-11-22 19:31 - Revision 006/T003 aceptada (Codex)
 Claude construyo vinculo y /cuenta; Codex reviso API/web/contrato y capturas360/1280. Hallazgo de cookie antigua tras hash reproducido en5casos y corregido porClaude. Independiente: pnpm --filter @nomoresaas/api exec vitest run tests/google-auth.test.js tests/auth.test.js 99/99, web account16/16, pnpm lint PASS, git diff --check PASS. Claude36OIDC/91regresion, web176previas, build y e2e account2/identity8 PASS. GET /api/account explicitado en contrato/plan y reanalisis7FR/3SC/18campos sin brechas. Exit0/is_error=false y soloT003 nueva marcada; sinGooglelive. Herramientas/datos previos conservados, sinpush/deploy.
+
+## 2026-11-22 — T004 006-acceso-google (Claude)
+«Continuar con Google» en /entrar y /registro solo con proveedor confirmado; aviso sin botón si no está configurado; motivos fijos del callback; .env.example y setup-google.md con nombres y estado. web 195/195, lint/build OK, e2e google-login+account+identity 14/14 (360/1280; botón con fixtures interceptadas). Sin Google vivo. Sin git add/commit.
+
+## 2026-11-22 19:36 - Revision 006/T004 aceptada (Codex)
+BotonGoogle condicionado a providers.enabled, navegacionHTTPSGoogle y fallbacklocal revisados; callbacks con motivos fijos y URLlimpia, sinSDK ni tokensbrowser. Independiente web195/195 y pnpm build PASS, diffcheck PASS; capturas360/1280 inspeccionadas. Claude lint y e2e14/14 (proveedor simulado claramente separado de APIreal sinconfig), luego4/4 tras ajusteCSS. Exit0/is_error=false, soloT004 marcada. SinGooglevivo ni despliegue. Snapshot pendiente de cadencia20min desde74ce23e; no tocarindice ni afirmarcommitfuturo.
