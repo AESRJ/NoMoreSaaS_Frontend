@@ -158,6 +158,28 @@ describe('arranque del servidor', () => {
     }
   });
 
+  it('Google: desactivado sin variables, activo con las tres y sin arrancar si es parcial', async () => {
+    const dir = await migratedDir();
+    const google = {
+      GOOGLE_CLIENT_ID: 'cliente-de-prueba.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'secreto-de-prueba',
+      GOOGLE_REDIRECT_URI: 'http://127.0.0.1:5573/api/auth/google/callback',
+    };
+    const servers = [];
+    try {
+      servers.push(await startServer({ port: 0, env: envFor(dir) }));
+      expect((await request(servers[0]).get('/api/auth/providers')).body).toEqual({ google: { enabled: false } });
+      servers.push(await startServer({ port: 0, env: envFor(dir, google) }));
+      expect((await request(servers[1]).get('/api/auth/providers')).body).toEqual({ google: { enabled: true } });
+      await expect(startServer({ port: 0, env: envFor(dir, { ...google, GOOGLE_CLIENT_SECRET: '' }) })).rejects.toThrow(
+        /GOOGLE_CLIENT_SECRET/,
+      );
+    } finally {
+      await Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('no arranca sin configuración válida ni sustituye la DB por memoria', async () => {
     const dir = await migratedDir();
     try {

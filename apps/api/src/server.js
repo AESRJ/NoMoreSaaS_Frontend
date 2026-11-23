@@ -2,8 +2,9 @@ import { pathToFileURL } from 'node:url';
 import { createApp } from './app.js';
 import { createAuth } from './auth.js';
 import { DEFAULT_CATALOG_PATH, loadCatalog } from './catalog.js';
-import { loadConfig } from './config.js';
+import { loadConfig, loadGoogleConfig } from './config.js';
 import { DatabaseError, loadMigrations, openDatabase } from './db.js';
+import { createGoogleProvider } from './google.js';
 import { createProjects } from './projects.js';
 
 /**
@@ -37,6 +38,8 @@ export async function startServer({
 } = {}) {
   const catalog = await loadCatalog(catalogPath, { requireSeedCoverage: catalogPath === DEFAULT_CATALOG_PATH });
   const config = loadConfig(env);
+  // Todo-o-nada: sin variables de Google el proveedor queda desactivado.
+  const googleConfig = loadGoogleConfig(env, config.appOrigin);
   const db = openDatabase(config.databasePath);
   let auth;
   let projects;
@@ -47,6 +50,8 @@ export async function startServer({
       sessionSecret: config.sessionSecret,
       appOrigin: config.appOrigin,
       cookieSecure: config.cookieSecure,
+      googleProvider: googleConfig ? createGoogleProvider(googleConfig) : null,
+      logger,
       ...(now ? { now } : {}),
     });
     projects = createProjects({ db, catalog, auth, ...(now ? { now } : {}) });

@@ -264,7 +264,7 @@ describe('store de sesiones SQLite', () => {
     expect(await call(store.get, 's')).toBeNull();
     await call(store.set, 's', sess({ createdAt: created }));
     expect(count(db, 'sessions')).toBe(0); // set no revive una sesión vencida
-  });
+  }, 20000); // ~72 escrituras con synchronous=FULL: lento con la suite completa en paralelo.
 
   it('descarta payload corrupto, limpia vencidas y destruye', async () => {
     db.prepare('INSERT INTO sessions VALUES (?, ?, ?)').run(hashSessionId('x'), '{"sin":"campos"}', clock + 1000);

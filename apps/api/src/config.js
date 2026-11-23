@@ -89,6 +89,35 @@ export function parseSessionSecret(raw) {
   return raw;
 }
 
+export const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
+const GOOGLE_KEYS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'];
+const OPAQUE_VALUE = /^[\x21-\x7e]{1,512}$/;
+
+/**
+ * Configuración OIDC de Google, solo servidor y todo-o-nada: sin ninguna de las
+ * tres variables devuelve null (proveedor desactivado); con algunas, o con
+ * valores inválidos, lanza ConfigError. La URI de callback es explícita, nunca
+ * se infiere del Host, y debe ser exactamente APP_ORIGIN + GOOGLE_CALLBACK_PATH.
+ * Los mensajes nombran variables, nunca sus valores.
+ */
+export function loadGoogleConfig(env, appOrigin) {
+  const present = GOOGLE_KEYS.filter((key) => env[key] !== undefined && env[key] !== '');
+  if (present.length === 0) return null;
+  if (present.length !== GOOGLE_KEYS.length) {
+    const missing = GOOGLE_KEYS.filter((key) => !present.includes(key));
+    throw new ConfigError(`Configuración de Google incompleta: falta ${missing.join(', ')} (se requieren las tres o ninguna).`);
+  }
+  const clientId = env.GOOGLE_CLIENT_ID;
+  const clientSecret = env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = env.GOOGLE_REDIRECT_URI;
+  if (!OPAQUE_VALUE.test(clientId)) throw new ConfigError('GOOGLE_CLIENT_ID no es válido.');
+  if (!OPAQUE_VALUE.test(clientSecret)) throw new ConfigError('GOOGLE_CLIENT_SECRET no es válido.');
+  if (redirectUri !== `${appOrigin}${GOOGLE_CALLBACK_PATH}`) {
+    throw new ConfigError(`GOOGLE_REDIRECT_URI debe ser exactamente APP_ORIGIN seguido de ${GOOGLE_CALLBACK_PATH}.`);
+  }
+  return Object.freeze({ clientId, clientSecret, redirectUri });
+}
+
 /**
  * Configuración completa de identidad. Los mensajes nunca incluyen el valor del
  * secreto. La integración con el servidor llega con la autenticación.

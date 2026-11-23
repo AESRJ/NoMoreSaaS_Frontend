@@ -14,7 +14,7 @@
   "commit_interval_minutes": 20,
   "minimum_minutes_between_commits": 20,
   "earliest_retry_local": "2026-11-22T14:21:00-08:00",
-  "implementation_status": "006_T001_reviewed_snapshot_pending",
+  "implementation_status": "006_T002_reviewed_waiting_006_T001_commit",
   "external_dependencies": [
     "GoogleOAuth client setup not understood by user: guided setup required; no secrets in chat",
     "Railway connected per user; operative tools/account/billing not yet verified"

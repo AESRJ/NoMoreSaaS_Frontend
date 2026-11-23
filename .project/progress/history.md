@@ -78,3 +78,15 @@ Migración 003 (password_credentials con copia exacta de hashes + DROP COLUMN, e
 
 ## 2026-11-22 — Preparación006 y revisiónT001 (Codex)
 Maestro2f21547:005códigoaceptado/closed,006únicaactiva/ready,007/008draft. AGENTS/CLAUDE/contexto/handoffs/cola/punteros yreferenciaversionada006 alSHAmaestro revisados; initambosPASS. Aclaración303callback/409JSON sin ampliaralcance. T001Claude exit0/is_error=false, soloT001marcada. Codexrevisómigración/repositorio/auth/pruebas y ejecutó144enfocadasPASS/diffcheckPASS; Claude274API/lintPASS. Cuenta002conArgon2real conservaUUID/hash ylogintrasmigrar; DBrelacionada/rollback/cascadasverificadas enDBtemporal. No migrarpreview ni afirmarGooglelive. T001aceptada,snapshotesperaíndicelibretras005/T004~15:25. Sinpush/despliegue.
+
+## 2026-11-22 — T002 006-acceso-google (Claude)
+google-auth-library 11.3.4 fijada; config Google todo-o-nada; providers/start/callback con state/nonce/PKCE S256, 5 min y un solo uso ligado a sesión, ID token verificado, alta/recuperación por sub, conflicto sin autoenlace y sesión regenerada; callback 303 con motivos fijos. google-auth 19/19, API 294/294 (tras timeout explícito en un test de store lento en paralelo), lint OK, check_handoff OK. Sin Google vivo. Detalle en impl_AUTH-GOOGLE.md. Sin git add/commit.
+
+## 2026-11-22 — T002 corrección Codex (Claude)
+Callback Google recomprueba tras el canje intento vigente y sesión persistida sin cambios (logout/rotación/vencimiento) antes de mutar; fallos sin Set-Cookie ni save/touch. 4 pruebas de carrera con proveedor diferido fallaban antes (4/4) y pasan después; google-auth 23/23, API 298/298, lint OK. Sin git add/commit.
+
+## 2026-11-22 — T002 último ajuste Codex (Claude)
+isSessionCurrent síncrono; TTL + relectura de sesión + mutación + destroy del sid en un tramo síncrono tras el último await. Caso determinista de cesión (falla con await temporal, pasa restaurado). google-auth 24/24, enfocadas 156/156, lint OK. Corregida la frase previa sobre microtareas. Sin git add/commit.
+
+## 2026-11-22 — Revisión006/T002 aceptada (Codex)
+Proveedor/config/rutas ySDK11.3.4fijado revisados; Googlevivo aún pendiente. HallazgoSC003de sesión duranteawait se reprodujo con4fallos y Claude reparó; segundoajuste eliminó cesión innecesaria despuésdecomprobarestado. Prueba de microtarea falló conawait y pasa sinél. Codexlint/156APIenfocadas/diffcheckPASS; Claude24OIDC/156enfocadasPASS yAPI298PASSprevia. Timeout20s local al caso24h justificado por2fallos5s con~72escriturasFULL, sin perderaserciones. Exit0/is_error=false, T002marcada sola. No UI, Googlelive ni previewmigrada. EsperarcommitT001~15:45paracongelarT002, sin tocaríndicependiente.
