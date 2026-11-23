@@ -105,3 +105,9 @@ Claude construyo vinculo y /cuenta; Codex reviso API/web/contrato y capturas360/
 
 ## 2026-11-22 19:36 - Revision 006/T004 aceptada (Codex)
 BotonGoogle condicionado a providers.enabled, navegacionHTTPSGoogle y fallbacklocal revisados; callbacks con motivos fijos y URLlimpia, sinSDK ni tokensbrowser. Independiente web195/195 y pnpm build PASS, diffcheck PASS; capturas360/1280 inspeccionadas. Claude lint y e2e14/14 (proveedor simulado claramente separado de APIreal sinconfig), luego4/4 tras ajusteCSS. Exit0/is_error=false, soloT004 marcada. SinGooglevivo ni despliegue. Snapshot pendiente de cadencia20min desde74ce23e; no tocarindice ni afirmarcommitfuturo.
+
+## 2026-11-22 — T005 006-acceso-google (Claude)
+Integración: prueba SC-001 (aislamiento de proyectos y logout de cuenta Google), docs de callbacks/estado en setup-google.md y README. API 312/312, web 195/195, lint/build OK, e2e 54/54 tras mover /cuenta al recorrido de identity (la versión T003 superaba el límite de 10 registros/IP: 52/54). init OK. Google vivo pendiente de credenciales reales: no done. Sin git add/commit.
+
+## 2026-11-22 19:41 - Revision 006/T005 aceptada (Codex)
+Independiente37OIDC/lint y14e2eChrome360/1280 PASS; Claude API312/web195/lint/build/init y e2e54/54PASS despues de reagruparfixtures sin bajarlimites (antes52/54 por12registros). AislamientoGoogle/local ylogout comprobados con clienteGoogle simulado. Guia/README/evidenciaFRSC revisados. Exit0/is_error=false y5/5checkboxes. Codigo006 aceptado, Googlelivependiente: blocked/code_reviewed=true, no done ni deploy. T004snapshot congelado, T005aceptada aun sinprepararcommit. No tocarindiceT004.

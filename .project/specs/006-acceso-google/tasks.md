@@ -15,7 +15,7 @@ Meta: las historias de spec.md y criterios observables de quickstart.md.
 
 - [X] T004 [US1] Añadir botón ContinuarconGoogle en registro/login y estados de cancelar/error/configausente, cuenta/vínculo y fallbacklocal en apps/web/src. Usarcontrato y rutasinternas; noSDK/tokenbrowser ni fingiractivación. FR001/006/007. .project/docs/setup-google.md y .env.example solo nombresplaceholder. Verificar UI/local y flujo de proveedor con fixtures; pruebavivaGoogle separada exige credencialesreales.
 
-- [ ] T005 [US3] Integrar/pruebasriesgoauth, documentar setupGoogle/callbacks/estado y evidencia .project/progress/impl_AUTH-GOOGLE.md. FR001–007/SC001–003. Codex revisa; Googlelive no probado→in_review/blocked con dependenciaexterna, nunca donepormocks. Noeditar permisosCloud ni desplegar por cuenta propia.
+- [X] T005 [US3] Integrar/pruebasriesgoauth, documentar setupGoogle/callbacks/estado y evidencia .project/progress/impl_AUTH-GOOGLE.md. FR001–007/SC001–003. Codex revisa; Googlelive no probado→in_review/blocked con dependenciaexterna, nunca donepormocks. Noeditar permisosCloud ni desplegar por cuenta propia.
 
 ## Phase4 Polish y cierre
 Laúltima tarea incluyeintegración/checks/evidencia; Codex cierra sólo tras verificación, sin nuevos cambios de producto por Codex.

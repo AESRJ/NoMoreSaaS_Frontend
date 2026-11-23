@@ -95,3 +95,27 @@ Comandos y resultados:
 - check_handoff OK.
 
 Límites: e2e real sin Google configurado (sin botón, aviso, callback real → `/entrar` con google_failed). Botón y salida a Google verificados con respuestas fixture interceptadas en el navegador (`page.route`), sin peticiones a Google. Sin prueba viva con Google: requiere cliente/consentimiento reales. Tras Google el destino es `/proyectos` (no conserva `?siguiente`, según contrato). Sin git add/commit.
+
+## T005 — integración, riesgo y documentación (Claude, 2026-11-22)
+Archivos:
+- `apps/api/tests/google-auth.test.js`: prueba SC-001 con `/api/projects` montado (cuenta Google y local no ven ni leen proyectos ajenos, 404 cruzado; tras logout la cookie Google da 401 en proyectos y cuenta). Opción `withProjects` en el helper.
+- `tests/e2e/account.spec.js` reducido a la ruta sin sesión (redirige con `?siguiente=/cuenta`, `/api/account` 401); las comprobaciones con sesión de /cuenta (sin botón falso, motivo fijo y limpieza de URL, motivo heredado ignorado, sin desbordamiento, captura) pasan al final del recorrido 1 de `tests/e2e/identity.spec.js`, reutilizando su cuenta.
+- `.project/docs/setup-google.md`: rutas/callbacks, motivos fijos, TTL/un uso/sesión, sin autoenlace por correo y estado de verificación (fixtures sí; Google vivo pendiente). `README.md`: incremento 006, variables, migración 003 y prueba viva pendiente; quitada la mención «sin OAuth».
+
+Trazabilidad (pruebas automáticas, sin Google vivo):
+- FR-001 local se mantiene y Google solo si configurado: auth.test (login/registro), google-login.test/e2e (sin botón, aviso), api.test (off/on/parcial).
+- FR-002 identidad por sub, alta con email_verified, mismo UUID si cambia el correo: google-auth.test.
+- FR-003 sin autoenlace, vínculo con contraseña/CSRF, conflicto sin mutación: google-auth.test «vínculo desde /cuenta», account.test.
+- FR-004 CSRF/Origin, state/nonce/PKCE, 5 min, un uso, token verificado, sesión regenerada y carreras: google-auth.test (incl. carreras callback y link/start, verificación RSA local de google-auth-library).
+- FR-005 hashes/proyectos conservados, cuenta Google sin contraseña: db.test (003 desde 002), identities.test, auth.test.
+- FR-006 secretos y canje en servidor, scopes mínimos, sin tokens en DB/logs: google-auth.test (URL, volcado DB, logger).
+- FR-007 errores/persistencia/aislamiento: este bloque + identity e2e; login Google real pendiente.
+- SC-001 prueba nueva de aislamiento/logout; SC-002 vínculo y conflicto; SC-003 replay/vencido/sesión ajena/carreras y config ausente sin botón.
+
+Comandos y resultados:
+- `vitest run tests/google-auth.test.js -t "SC-001"` → 1/1 (primer intento falló por leer `body.id` en lugar de `body.project.id` en la propia prueba).
+- `pnpm test` → API 312/312, web 195/195. `pnpm lint` OK. `pnpm build` OK.
+- `pnpm test:e2e` (3501/5773 heredados, DB temporal) → 52/54: 2 de identity en 360 con «Demasiados intentos» en registro. Causa: 12 registros por ejecución (identity 8 + workflow 2 + account.spec 2, añadido en T003) frente al límite de 10/IP/15 min. Tras mover las comprobaciones de /cuenta al recorrido existente: 54/54 en 360 y 1280.
+- `.\init.cmd` → OK (completadas 4 de 5 antes de marcar T005).
+
+Estado y límites: el código y las pruebas con fixtures están completos para revisión. El login y el vínculo vivos con Google NO se han probado: falta crear cliente/consentimiento según setup-google.md y ejecutar su paso7. Por tanto la entrega queda para revisión con dependencia externa (in_review/blocked según decida Codex), no done. Sin despliegue, sin cambios de permisos Cloud, sin migrar la DB local ni la de preview. Sin git add/commit.

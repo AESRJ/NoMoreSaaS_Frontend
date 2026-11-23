@@ -13,6 +13,7 @@ import { migrate, openDatabase } from '../src/db.js';
 import { ATTEMPT_TTL_MS } from '../src/google-auth.js';
 import { GOOGLE_AUTHORIZATION_ENDPOINT, GoogleAuthError, createGoogleProvider } from '../src/google.js';
 import { createAccountStore } from '../src/identities.js';
+import { createProjects } from '../src/projects.js';
 import { validCatalog } from './fixtures.js';
 
 // Flujo OIDC con DB temporal y cliente Google simulado (sin red ni credenciales
@@ -75,7 +76,7 @@ function fakeClient() {
   };
 }
 
-function build({ google = true, path = join(dir, 'g.sqlite'), hasher = fakeHasher } = {}) {
+function build({ google = true, path = join(dir, 'g.sqlite'), hasher = fakeHasher, withProjects = false } = {}) {
   const db = openDatabase(path);
   migrate(db);
   const client = fakeClient();
@@ -93,7 +94,8 @@ function build({ google = true, path = join(dir, 'g.sqlite'), hasher = fakeHashe
       : null,
   });
   opened.push({ auth, db });
-  return { app: createApp({ catalog, logger, auth }), db, client, logger, path, auth };
+  const projects = withProjects ? createProjects({ db, catalog, auth, now: () => clock }) : undefined;
+  return { app: createApp({ catalog, logger, auth, projects }), db, client, logger, path, auth };
 }
 
 const count = (db, table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
@@ -210,6 +212,36 @@ describe('GET /api/auth/google/callback', () => {
     const out = await post(agent, '/api/auth/logout', {}, me.csrfToken);
     expect(out.status).toBe(204);
     expect((await agent.get('/api/auth/session')).body.user).toBeNull();
+  });
+
+  it('SC-001: la cuenta Google solo accede a sus proyectos y el logout revoca su cookie', async () => {
+    const ctx = build({ withProjects: true });
+    const ana = request.agent(ctx.app);
+    const reg = await post(ana, '/api/auth/register', { email: 'ana@example.com', password: PASSWORD }, await csrfOf(ana));
+    const anaProject = await post(ana, '/api/projects', { name: 'Proyecto de Ana', description: '', alternativeIds: ['otra'] }, reg.body.csrfToken);
+    expect(anaProject.status).toBe(201);
+
+    const agent = request.agent(ctx.app);
+    const { params } = await start(ctx, agent);
+    ctx.client.state.claims = { sub: 'g-sc1', email: 'g@example.com', email_verified: true, nonce: params.nonce };
+    const signedIn = await callback(agent, { state: params.state, code: 'c' });
+    expectRedirect(signedIn, '/proyectos');
+    const googleCookie = sessionCookie(signedIn).split(';')[0];
+    const csrf = await csrfOf(agent);
+    const own = await post(agent, '/api/projects', { name: 'Proyecto Google', description: '', alternativeIds: ['alt-uno'] }, csrf);
+    expect(own.status).toBe(201);
+
+    const list = await agent.get('/api/projects');
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).toContain('Proyecto Google');
+    expect(JSON.stringify(list.body)).not.toContain('Proyecto de Ana');
+    expect((await agent.get(`/api/projects/${anaProject.body.project.id}`)).status).toBe(404);
+    expect((await ana.get(`/api/projects/${own.body.project.id}`)).status).toBe(404);
+    expect(JSON.stringify((await ana.get('/api/projects')).body)).not.toContain('Proyecto Google');
+
+    expect((await post(agent, '/api/auth/logout', {}, csrf)).status).toBe(204);
+    expect((await request(ctx.app).get('/api/projects').set('Cookie', googleCookie)).status).toBe(401);
+    expect((await request(ctx.app).get('/api/account').set('Cookie', googleCookie)).status).toBe(401);
   });
 
   it('Google existente recupera el mismo UUID aunque cambie el correo externo', async () => {
