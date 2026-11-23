@@ -1845,6 +1845,179 @@ main:focus {
   gap: 0.75rem;
 }
 
+/* Etiqueta, control y notas pegados arriba aunque otra celda de la fila sea más alta. */
+.flow-form__grid > .field {
+  align-content: start;
+}
+
+/* Ayuda opcional para rellenar el equipo (007): banda dentro del formulario, sin tarjeta anidada. */
+.flow-assist {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0 0.25rem;
+  padding: 1.25rem 0;
+  border-block: 1px solid var(--line);
+}
+
+.flow-assist__title {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.flow-assist__choice {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.flow-assist__choice legend {
+  margin-bottom: 0.4rem;
+  padding: 0;
+}
+
+.flow-assist__targets {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.flow-assist__target {
+  align-items: flex-start;
+  border: 1px solid var(--line-strong);
+  padding: 0.6rem 0.75rem;
+}
+
+.flow-assist__target input {
+  margin-top: 0.2rem;
+}
+
+.flow-assist__target:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.flow-assist__target > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.flow-assist__note {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.flow-assist__methods {
+  display: grid;
+  gap: 1.25rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+.flow-assist__method {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.flow-assist__method > * {
+  margin: 0;
+  max-width: 100%;
+}
+
+.flow-assist__method h4 {
+  font-size: var(--text-md);
+}
+
+.flow-assist__method .table-scroll,
+.flow-assist__preview {
+  justify-self: stretch;
+  margin-top: 0;
+}
+
+.flow-assist__preview {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.flow-assist__preview > * {
+  margin: 0;
+  max-width: 100%;
+}
+
+.flow-assist__preview .table-scroll {
+  width: 100%;
+}
+
+.flow-assist__table th[scope='row'] {
+  font-weight: 600;
+}
+
+.flow-assist__status:empty {
+  display: none;
+}
+
+.flow-assist__status {
+  margin: 0.75rem 0 0;
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.field__file {
+  max-width: 100%;
+  font: inherit;
+  color: var(--ink-soft);
+}
+
+.field__file::file-selector-button {
+  margin-right: 0.75rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-alt);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+.field__file::file-selector-button:hover {
+  border-color: var(--accent);
+}
+
+.field__file:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.field__origin {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.badge--import {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+}
+
+/* Aproximado: discontinuo y en tono de aviso, distinguible sin depender del color. */
+.badge--approximate {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  border-color: var(--warn-line);
+  border-style: dashed;
+}
+
 .flow-view {
   display: grid;
   gap: 1rem;

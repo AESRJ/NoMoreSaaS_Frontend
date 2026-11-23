@@ -3,11 +3,12 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router';
 import { AuthRequestError } from '../api/auth.js';
 import { useProjectsClient } from '../api/projects.js';
 import { ExternalLink } from '../components/ExternalLink.jsx';
+import { ProfileAssist, formatCapturedAt } from '../components/ProfileAssist.jsx';
 import { DateTime, ProjectAlternative, ProjectNotFound, ProjectsError, ProjectsLoading, isMissing } from '../components/ProjectParts.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { useOwnedRequest } from '../hooks/useOwnedRequest.js';
 import { isStaleWrite, useAuth } from '../store/auth.js';
-import { clearProjectDraft, saveProjectDraft, takeProjectDraft } from '../store/projectDraft.js';
+import { clearProjectDraft, saveProjectDraft, takeProjectDraft, takeProjectDraftMeta } from '../store/projectDraft.js';
 
 // Recorrido privado /proyectos/:id/flujo: Equipo → Evaluación → Plan.
 // Todo el contenido (prompts, nombres, avisos) se muestra como texto React.
@@ -102,6 +103,39 @@ function toValues(profile) {
 
 const sameValues = (a, b) => Object.keys(EMPTY_VALUES).every((key) => a[key] === b[key]);
 
+// Procedencia en el formulario: destino elegido y SOLO los campos no manuales.
+// Editar un campo a mano lo vuelve manual; lo ausente es manual/declared.
+const EMPTY_META = Object.freeze({ target: null, fields: {} });
+
+function toMeta(provenance) {
+  if (!provenance) return { target: null, fields: {} };
+  const fields = {};
+  for (const [key, entry] of Object.entries(provenance.fields)) {
+    if (entry.source !== 'manual') fields[key] = { ...entry };
+  }
+  return { target: provenance.target, fields };
+}
+
+const entryKey = (entry) => (entry ? `${entry.source}|${entry.certainty}|${entry.capturedAt}` : 'manual');
+const sameMeta = (a, b) => a.target === b.target && Object.keys(EMPTY_VALUES).every((key) => entryKey(a.fields[key]) === entryKey(b.fields[key]));
+
+function OriginNote({ id, entry }) {
+  if (!entry) return null;
+  return (
+    <p id={id} className="field__origin">
+      {entry.source === 'import' ? (
+        <>
+          <span className="badge badge--import">Importado</span> del diagnóstico del {formatCapturedAt(entry.capturedAt)}.
+        </>
+      ) : (
+        <>
+          <span className="badge badge--approximate">Aproximado</span> por el navegador; revísalo.
+        </>
+      )}
+    </p>
+  );
+}
+
 /** Valida en el cliente con los mismos límites que el servidor; devuelve {profile, errors}. */
 function parseValues(values) {
   const errors = {};
@@ -130,7 +164,7 @@ function errorMessage(error, fallback) {
 }
 
 // ---------------------------------------------------------------------------
-function ProfileForm({ project, workflow, values, setValues, onSaved }) {
+function ProfileForm({ project, workflow, values, setValues, meta, setMeta, onSaved }) {
   const client = useProjectsClient();
   const { pathname } = useLocation();
   const userId = useAuth((state) => state.user?.id);
@@ -144,8 +178,10 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
   const formRef = useRef(null);
   const uid = useId();
   const saved = toValues(workflow.profile);
-  const dirty = !sameValues(values, saved);
+  const savedMeta = toMeta(workflow.provenance);
+  const dirty = !sameValues(values, saved) || !sameMeta(meta, savedMeta);
   const progressCount = workflow.progress.stale ? 0 : workflow.progress.completedStepIds.length;
+  const [assistNotice, setAssistNotice] = useState(null);
 
   const [focusInvalid, setFocusInvalid] = useState(0);
 
@@ -160,7 +196,37 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
 
   function update(key, value) {
     setValues((current) => ({ ...current, [key]: value }));
+    // Un campo editado a mano pasa a ser declarado por la persona.
+    setMeta((current) => {
+      if (!current.fields[key]) return current;
+      const fields = { ...current.fields };
+      delete fields[key];
+      return { ...current, fields };
+    });
     if (fieldErrors[key]) setFieldErrors((current) => ({ ...current, [key]: undefined }));
+  }
+
+  function chooseTarget(target) {
+    // Lo leído del navegador describe ESTE equipo: si cambia el destino, se vacía.
+    const browserKeys = Object.keys(meta.fields).filter((key) => meta.fields[key].source === 'browser');
+    if (target !== 'this-device' && browserKeys.length) {
+      setValues((current) => ({ ...current, ...Object.fromEntries(browserKeys.map((key) => [key, ''])) }));
+      setAssistNotice('Se han vaciado los campos rellenados por el navegador, porque describían este equipo. Escríbelos a mano o importa un diagnóstico.');
+    } else {
+      setAssistNotice(null);
+    }
+    setMeta((current) => {
+      const fields = { ...current.fields };
+      if (target !== 'this-device') for (const key of browserKeys) delete fields[key];
+      return { target, fields };
+    });
+  }
+
+  function applyAssist(rows, entry, message) {
+    setValues((current) => ({ ...current, ...Object.fromEntries(rows.map((row) => [row.key, NUMBER_FIELDS[row.key] ? String(row.value) : row.value])) }));
+    setMeta((current) => ({ ...current, fields: { ...current.fields, ...Object.fromEntries(rows.map((row) => [row.key, { ...entry }])) } }));
+    setFieldErrors((current) => ({ ...current, ...Object.fromEntries(rows.map((row) => [row.key, undefined])) }));
+    setAssistNotice(message);
   }
 
   async function submit(event) {
@@ -175,10 +241,12 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
     }
     busy.current = true;
     setSaving(true);
-    // Si la sesión caduca durante el envío, al volver la misma cuenta recupera los valores.
-    saveProjectDraft({ userId, path: pathname, values });
+    // Si la sesión caduca durante el envío, al volver la misma cuenta recupera los valores y su origen.
+    saveProjectDraft({ userId, path: pathname, values, meta });
+    // Sin destino elegido todo es manual: se envía como antes, sin procedencia.
+    const provenance = meta.target ? { target: meta.target, fields: meta.fields } : null;
     try {
-      const next = await withCsrf((csrfToken) => client.saveProfile(project.id, profile, { csrfToken }));
+      const next = await withCsrf((csrfToken) => client.saveProfile(project.id, profile, provenance ? { csrfToken, provenance } : { csrfToken }));
       clearProjectDraft(userId);
       onSaved(next);
       return;
@@ -200,7 +268,8 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
   }
 
   const fieldId = (key) => `${uid}-${key}`;
-  const describedBy = (key, hint) => [hint && `${fieldId(key)}-hint`, fieldErrors[key] && `${fieldId(key)}-error`].filter(Boolean).join(' ') || undefined;
+  const describedBy = (key, hint) =>
+    [hint && `${fieldId(key)}-hint`, meta.fields[key] && `${fieldId(key)}-origin`, fieldErrors[key] && `${fieldId(key)}-error`].filter(Boolean).join(' ') || undefined;
 
   return (
     <form ref={formRef} className="auth-form flow-form" noValidate onSubmit={submit} aria-labelledby={`${uid}-title`}>
@@ -208,13 +277,18 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
         Equipo y uso previsto
       </h2>
       <p className="muted">
-        Datos que declaras tú; no se detecta nada de tu equipo. Se usan para una estimación orientativa, nunca una garantía.
+        Escribe los datos tú o, si quieres, rellénalos con ayuda y revísalos. Nada se guarda hasta que pulses Guardar. Se usan para una estimación orientativa, nunca una garantía.
       </p>
       {formError && (
         <div ref={alertRef} className="form-alert" role="alert" tabIndex={-1}>
           <p>{formError.text}</p>
         </div>
       )}
+
+      <ProfileAssist target={meta.target} onTarget={chooseTarget} onApply={applyAssist} />
+      <p className="flow-assist__status" role="status">
+        {assistNotice}
+      </p>
 
       <div className="flow-form__grid">
         {Object.entries(NUMBER_FIELDS).map(([key, rule]) => (
@@ -238,6 +312,7 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
             <p id={`${fieldId(key)}-hint`} className="field__hint">
               Entre {fmt(rule.min)} y {fmt(rule.max)}.
             </p>
+            <OriginNote id={`${fieldId(key)}-origin`} entry={meta.fields[key]} />
             {fieldErrors[key] && (
               <p id={`${fieldId(key)}-error`} className="field__error">
                 {fieldErrors[key]}
@@ -264,6 +339,7 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
                 </option>
               ))}
             </select>
+            <OriginNote id={`${fieldId(key)}-origin`} entry={meta.fields[key]} />
             {fieldErrors[key] && (
               <p id={`${fieldId(key)}-error`} className="field__error">
                 {fieldErrors[key]}
@@ -306,7 +382,16 @@ function ProfileForm({ project, workflow, values, setValues, onSaved }) {
           {saving ? 'Guardando…' : workflow.profile ? 'Guardar y recalcular' : 'Guardar equipo'}
         </button>
         {dirty && workflow.profile && (
-          <button type="button" className="button button--ghost" onClick={() => setValues(saved)} disabled={saving}>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => {
+              setValues(saved);
+              setMeta(savedMeta);
+              setAssistNotice(null);
+            }}
+            disabled={saving}
+          >
             Descartar cambios
           </button>
         )}
@@ -655,13 +740,15 @@ function WorkflowView({ data, replace, retry }) {
   const view = VIEWS.some((v) => v.id === params.get('vista')) ? params.get('vista') : 'equipo';
   const [restored] = useState(() => takeProjectDraft(userId, pathname));
   const [values, setValues] = useState(() => restored ?? toValues(workflow.profile));
+  const [meta, setMeta] = useState(() => (restored ? (takeProjectDraftMeta(userId, pathname) ?? { ...EMPTY_META }) : toMeta(workflow.provenance)));
   const [notice, setNotice] = useState(restored ? 'Hemos recuperado el equipo que no llegó a guardarse. Revísalo y pulsa Guardar.' : null);
-  const dirty = !sameValues(values, toValues(workflow.profile));
+  const dirty = !sameValues(values, toValues(workflow.profile)) || !sameMeta(meta, toMeta(workflow.provenance));
   const headingRef = useRef(null);
 
   function saved(next) {
     replace({ project, workflow: next });
     setValues(toValues(next.profile));
+    setMeta(toMeta(next.provenance));
     setNotice('Equipo guardado. La evaluación y el plan se han recalculado.');
   }
 
@@ -686,7 +773,7 @@ function WorkflowView({ data, replace, retry }) {
       <h2 ref={headingRef} tabIndex={-1} className="sr-only">
         {VIEWS.find((v) => v.id === view).label}
       </h2>
-      {view === 'equipo' && <ProfileForm project={project} workflow={workflow} values={values} setValues={setValues} onSaved={saved} />}
+      {view === 'equipo' && <ProfileForm project={project} workflow={workflow} values={values} setValues={setValues} meta={meta} setMeta={setMeta} onSaved={saved} />}
       {view === 'evaluacion' && <EvaluationView evaluation={workflow.evaluation} dirty={dirty} />}
       {view === 'plan' && (
         <PlanView

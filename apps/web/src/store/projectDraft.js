@@ -6,9 +6,9 @@
 
 let draft = null;
 
-/** @param {{ userId: string, path: string, values: object }} next */
+/** @param {{ userId: string, path: string, values: object, meta?: object }} next */
 export function saveProjectDraft(next) {
-  draft = { userId: next.userId, path: next.path, values: { ...next.values } };
+  draft = { userId: next.userId, path: next.path, values: { ...next.values }, meta: next.meta ? structuredClone(next.meta) : null };
 }
 
 /** Devuelve los valores si coinciden cuenta y ruta; con otra cuenta lo descarta. */
@@ -16,6 +16,13 @@ export function takeProjectDraft(userId, path) {
   retainProjectDraftFor(userId);
   if (!draft) return null;
   return draft.path === path ? { ...draft.values } : null;
+}
+
+/** Metadatos adjuntos al borrador (p. ej. procedencia del equipo), con las mismas reglas. */
+export function takeProjectDraftMeta(userId, path) {
+  retainProjectDraftFor(userId);
+  if (!draft || draft.path !== path || !draft.meta) return null;
+  return structuredClone(draft.meta);
 }
 
 /** Llamado al autenticarse una cuenta: elimina cualquier borrador de otra. */

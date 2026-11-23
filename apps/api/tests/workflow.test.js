@@ -39,6 +39,13 @@ const PROFILE = Object.freeze({
   cpuFeaturesKnown: false,
 });
 const EMPTY_PROGRESS = { completedStepIds: [], stale: false, updatedAt: null };
+const MANUAL = Object.freeze({ source: 'manual', certainty: 'declared', capturedAt: null });
+const ALL_MANUAL = Object.freeze({
+  target: null,
+  collectorVersion: null,
+  updatedAt: null,
+  fields: Object.fromEntries(PROFILE_FIELDS.map((key) => [key, MANUAL])),
+});
 
 let dir;
 let clock;
@@ -104,7 +111,7 @@ describe('GET /api/projects/:id/workflow', () => {
     const id = await newProject(ana);
     const res = await getWorkflow(ana, id);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ profile: null, evaluation: null, plan: null, progress: EMPTY_PROGRESS });
+    expect(res.body).toEqual({ profile: null, provenance: null, evaluation: null, plan: null, progress: EMPTY_PROGRESS });
     expectNoLeak(res);
   });
 
@@ -132,6 +139,8 @@ describe('PUT /api/projects/:id/profile', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       profile: { projectId: id, ...PROFILE, revision: 1 },
+      // Cliente sin procedencia (anterior a 007): todo manual/declared.
+      provenance: ALL_MANUAL,
       // El fixture no tiene reglas: evaluación pendiente con requisitos desconocidos (T003).
       evaluation: expect.objectContaining({ status: 'pending', rulesVersion: expect.any(String) }),
       // Sin reglas ni plantillas para el fixture: plan bloqueado y sin pasos (T004).
@@ -306,5 +315,160 @@ describe('PUT /api/projects/:id/profile', () => {
 
   it('PROFILE_FIELDS coincide con los campos editables del modelo', () => {
     expect([...PROFILE_FIELDS].sort()).toEqual(Object.keys(PROFILE).sort());
+  });
+});
+
+describe('procedencia del perfil (007, migración 004)', () => {
+  const CAPTURED = '2026-11-21T09:30:00.000Z';
+  const IMPORTED_KEYS = ['cpuCores', 'ramGiB', 'storageGiB', 'os', 'architecture'];
+  const importEntry = (capturedAt = CAPTURED) => ({ source: 'import', certainty: 'reported', capturedAt });
+  const imported = (extra = {}) => ({
+    target: 'other-device',
+    collectorVersion: null,
+    fields: { ...Object.fromEntries(IMPORTED_KEYS.map((k) => [k, importEntry()])), users: MANUAL, ...extra },
+  });
+  const rows = (db) => db.prepare('SELECT * FROM project_profile_provenance').all();
+
+  async function setup() {
+    const ctx = build();
+    const ana = await signUp(ctx.app, 'ana@example.com');
+    const id = await newProject(ana);
+    return { ...ctx, ana, id };
+  }
+
+  it('guarda solo metadatos normalizados, devuelve todos los campos (ausentes = manual) y persiste', async () => {
+    const { ana, id, db } = await setup();
+    const res = await putProfile(ana, id, { ...PROFILE, provenance: imported() });
+    expect(res.status).toBe(200);
+    expect(res.body.profile).toEqual({ projectId: id, ...PROFILE, revision: 1 });
+    expect(res.body.provenance).toEqual({
+      target: 'other-device',
+      collectorVersion: null,
+      updatedAt: '2026-11-22T10:00:00.000Z',
+      fields: { ...ALL_MANUAL.fields, ...Object.fromEntries(IMPORTED_KEYS.map((k) => [k, importEntry()])) },
+    });
+    const [row] = rows(db);
+    expect(Object.keys(JSON.parse(row.fields))).toEqual(IMPORTED_KEYS);
+    expect(row.collector_version).toBeNull();
+    expect((await getWorkflow(ana, id)).body.provenance).toEqual(res.body.provenance);
+    expectNoLeak(res);
+  });
+
+  it('navegador: solo CPU/RAM aproximadas y solo para este equipo', async () => {
+    const { ana, id, db } = await setup();
+    const browser = { source: 'browser', certainty: 'approximate', capturedAt: CAPTURED };
+    const ok = await putProfile(ana, id, { ...PROFILE, provenance: { target: 'this-device', fields: { cpuCores: browser, ramGiB: browser } } });
+    expect(ok.status).toBe(200);
+    expect(ok.body.provenance.fields.cpuCores).toEqual(browser);
+    expect(ok.body.provenance.collectorVersion).toBeNull();
+
+    const other = await putProfile(ana, id, { ...PROFILE, provenance: { target: 'other-device', fields: { cpuCores: browser } } });
+    expect(other.status).toBe(400);
+    expect(other.body.error.fields).toEqual({ 'provenance.fields.cpuCores': 'El navegador solo describe este equipo.' });
+    const disk = await putProfile(ana, id, { ...PROFILE, provenance: { target: 'this-device', fields: { storageGiB: browser } } });
+    expect(Object.keys(disk.body.error.fields)).toEqual(['provenance.fields.storageGiB']);
+    expect(JSON.parse(rows(db)[0].fields)).toEqual({ cpuCores: browser, ramGiB: browser });
+  });
+
+  it('rechaza procedencia inválida con 400 por campo, sin tocar perfil ni procedencia previos', async () => {
+    const { ana, id, db } = await setup();
+    expect((await putProfile(ana, id, { ...PROFILE, provenance: imported() })).status).toBe(200);
+    const before = { profiles: db.prepare('SELECT * FROM project_profiles').all(), prov: rows(db) };
+    const entry = (patch) => ({ ...importEntry(), ...patch });
+    const cases = [
+      [{ ...imported(), extra: 1 }, 'provenance.extra'],
+      [{ ...imported(), target: 'servidor' }, 'provenance.target'],
+      [{ ...imported(), collectorVersion: 'x'.repeat(41) }, 'provenance.collectorVersion'],
+      [{ ...imported(), collectorVersion: 7 }, 'provenance.collectorVersion'],
+      [{ ...imported(), fields: [] }, 'provenance.fields'],
+      [imported({ hostname: entry() }), 'provenance.fields.hostname'],
+      [imported({ ramGiB: entry({ certainty: 'declared' }) }), 'provenance.fields.ramGiB'],
+      [imported({ ramGiB: entry({ source: 'agent' }) }), 'provenance.fields.ramGiB'],
+      [imported({ ramGiB: { ...entry(), serial: 'X' } }), 'provenance.fields.ramGiB'],
+      [imported({ users: entry() }), 'provenance.fields.users'],
+      [imported({ storageKind: entry() }), 'provenance.fields.storageKind'],
+      [imported({ cpuFeaturesKnown: entry() }), 'provenance.fields.cpuFeaturesKnown'],
+      [imported({ ramGiB: entry({ capturedAt: null }) }), 'provenance.fields.ramGiB'],
+      [imported({ ramGiB: entry({ capturedAt: '2026-11-22T10:06:00.000Z' }) }), 'provenance.fields.ramGiB'],
+      [imported({ ramGiB: entry({ capturedAt: '2026-02-30T10:00:00.000Z' }) }), 'provenance.fields.ramGiB'],
+      [imported({ ramGiB: entry({ capturedAt: 'ayer' }) }), 'provenance.fields.ramGiB'],
+      [imported({ users: { ...MANUAL, capturedAt: CAPTURED } }), 'provenance.fields.users'],
+    ];
+    for (const [provenance, field] of cases) {
+      const res = await putProfile(ana, id, { ...PROFILE, ramGiB: 32, provenance });
+      expect(res.status, field).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(Object.keys(res.body.error.fields), field).toEqual([field]);
+    }
+    expect((await putProfile(ana, id, { ...PROFILE, provenance: 'import' })).body.error.fields).toEqual({ provenance: 'Debe ser un objeto.' });
+    // Un perfil inválido con procedencia válida tampoco escribe nada.
+    expect((await putProfile(ana, id, { ...PROFILE, cpuCores: 0, provenance: imported() })).body.error.fields).toEqual({ cpuCores: expect.any(String) });
+    expect(db.prepare('SELECT * FROM project_profiles').all()).toEqual(before.profiles);
+    expect(rows(db)).toEqual(before.prov);
+    // Dentro de la tolerancia de 5 minutos en el futuro sí se acepta.
+    const edge = imported({ ramGiB: entry({ capturedAt: '2026-11-22T10:05:00.000Z' }) });
+    expect((await putProfile(ana, id, { ...PROFILE, provenance: edge })).status).toBe(200);
+  });
+
+  it('cambiar origen/certeza sube la revisión e invalida el plan; destino o fecha solos no', async () => {
+    const { ana, id, db } = await setup();
+    const first = await putProfile(ana, id, PROFILE);
+    const fp1 = first.body.plan.fingerprint;
+    expect((await send(ana.agent, 'put', `/api/projects/${id}/progress`, { fingerprint: fp1, completedStepIds: [] }, ana.token)).status).toBe(200);
+
+    // Mismos valores, ahora importados: cambia la certeza efectiva → revisión 2, avance obsoleto.
+    const second = await putProfile(ana, id, { ...PROFILE, provenance: imported() });
+    expect(second.body.profile.revision).toBe(2);
+    expect(second.body.plan.fingerprint).not.toBe(fp1);
+    expect(second.body.progress.stale).toBe(true);
+
+    // Solo cambian destino y fecha de captura: misma revisión, metadatos actualizados.
+    clock += 1000;
+    const later = '2026-11-21T12:00:00.000Z';
+    const moved = { ...imported(Object.fromEntries(IMPORTED_KEYS.map((k) => [k, importEntry(later)]))), target: 'this-device' };
+    const third = await putProfile(ana, id, { ...PROFILE, provenance: moved });
+    expect(third.body.profile.revision).toBe(2);
+    expect(third.body.provenance).toMatchObject({ target: 'this-device', updatedAt: '2026-11-22T10:00:01.000Z' });
+    expect(third.body.provenance.fields.ramGiB.capturedAt).toBe(later);
+
+    // Reenviar exactamente lo mismo no escribe nada.
+    clock += 1000;
+    const same = await putProfile(ana, id, { ...PROFILE, provenance: moved });
+    expect(same.body.profile.revision).toBe(2);
+    expect(same.body.provenance.updatedAt).toBe('2026-11-22T10:00:01.000Z');
+
+    // Cliente antiguo sin procedencia: todo pasa a manual → revisión 3 y fila borrada.
+    const legacy = await putProfile(ana, id, PROFILE);
+    expect(legacy.body.profile.revision).toBe(3);
+    expect(legacy.body.provenance).toEqual(ALL_MANUAL);
+    expect(rows(db)).toEqual([]);
+
+    // Todo manual explícito con destino: equivale a manual, no sube la revisión.
+    const manual = await putProfile(ana, id, { ...PROFILE, provenance: { target: 'other-device', fields: { ramGiB: MANUAL } } });
+    expect(manual.body.profile.revision).toBe(3);
+    expect(manual.body.provenance).toMatchObject({ target: 'other-device', fields: ALL_MANUAL.fields });
+  });
+
+  it('perfil previo a 004 (sin fila de procedencia) se lee como manual y conserva su revisión', async () => {
+    const { ana, id, db } = await setup();
+    await putProfile(ana, id, PROFILE);
+    expect(rows(db)).toEqual([]);
+    const res = await getWorkflow(ana, id);
+    expect(res.body.profile.revision).toBe(1);
+    expect(res.body.provenance).toEqual(ALL_MANUAL);
+  });
+
+  it('ajeno: B no lee ni escribe procedencia de A (404) y borrar el proyecto la elimina', async () => {
+    const { app, ana, id, db } = await setup();
+    const bea = await signUp(app, 'bea@example.com');
+    await putProfile(ana, id, { ...PROFILE, provenance: imported() });
+    const before = rows(db);
+    const read = await getWorkflow(bea, id);
+    expect(read.status).toBe(404);
+    expect(read.text).not.toContain(CAPTURED);
+    expect((await putProfile(bea, id, { ...PROFILE, provenance: { target: 'this-device', fields: {} } })).status).toBe(404);
+    expect(rows(db)).toEqual(before);
+    expect((await send(ana.agent, 'delete', `/api/projects/${id}`, {}, ana.token)).status).toBe(204);
+    expect(rows(db)).toEqual([]);
   });
 });

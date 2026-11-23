@@ -94,7 +94,7 @@ describe('openDatabase', () => {
 describe('migrate', () => {
   it('crea el esquema y es idempotente sin perder datos', () => {
     const db = tempDb();
-    expect(migrate(db)).toEqual([1, 2, 3]);
+    expect(migrate(db)).toEqual([1, 2, 3, 4]);
     const userId = insertUser(db);
     insertProject(db, userId, { alternatives: ['alt-uno', 'beta-alt'] });
 
@@ -106,6 +106,7 @@ describe('migrate', () => {
       { version: 1, name: 'identity' },
       { version: 2, name: 'workflow' },
       { version: 3, name: 'google-identity' },
+      { version: 4, name: 'profile-provenance' },
     ]);
   });
 
@@ -140,7 +141,7 @@ describe('migrate', () => {
 
     db = openDatabase(path);
     open.push(db);
-    expect(migrate(db)).toEqual([2, 3]);
+    expect(migrate(db)).toEqual([2, 3, 4]);
     expect(migrate(db)).toEqual([]);
     expect(db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId).name).toBe('Previo');
     expect(count(db, 'project_selections')).toBe(1);
@@ -166,7 +167,7 @@ describe('migrate', () => {
     expect(() => migrate(db, { migrations })).toThrow(/Falló la migración 90-rota/);
     expect(db.isTransaction).toBe(false);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'extra'").get()).toBeUndefined();
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
     // Las migraciones válidas quedan aplicadas y usable; reintentar sin la rota no cambia nada.
     insertUser(db);
     expect(migrate(db)).toEqual([]);
@@ -236,7 +237,7 @@ describe('migración 003 (credenciales, identidades, intentos OIDC)', () => {
     const { a, b, pa, before } = seed002(path);
     const db = openDatabase(path);
     open.push(db);
-    expect(migrate(db)).toEqual([3]);
+    expect(migrate(db)).toEqual([3, 4]);
     expect(migrate(db)).toEqual([]);
 
     expect(columns(db, 'users')).toEqual(['id', 'email', 'created_at']);
@@ -276,7 +277,7 @@ describe('migración 003 (credenciales, identidades, intentos OIDC)', () => {
     ).all()).toEqual([]);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }]);
     // Reintentar con la migración correcta completa la actualización.
-    expect(migrate(db)).toEqual([3]);
+    expect(migrate(db)).toEqual([3, 4]);
     expect(db.prepare('SELECT user_id, password_hash FROM password_credentials ORDER BY user_id').all()).toEqual(before.hashes);
   });
 
@@ -299,6 +300,44 @@ describe('migración 003 (credenciales, identidades, intentos OIDC)', () => {
 
     db.prepare('DELETE FROM sessions WHERE id_hash = ?').run(h('d'));
     expect(count(db, 'oauth_attempts')).toBe(0);
+  });
+
+  it('004 es aditiva sobre una DB en 003: conserva todo, perfiles previos sin procedencia, restricciones y cascada', () => {
+    const path = join(dir, 'v3.sqlite');
+    const { pa, pb, before } = seed002(path);
+    let db = openDatabase(path);
+    expect(migrate(db, { migrations: loadMigrations().slice(0, 3) })).toEqual([3]);
+    const at003 = {
+      credentials: db.prepare('SELECT * FROM password_credentials ORDER BY user_id').all(),
+      users: db.prepare('SELECT * FROM users ORDER BY id').all(),
+    };
+    db.close();
+
+    db = openDatabase(path);
+    open.push(db);
+    expect(migrate(db)).toEqual([4]);
+    expect(migrate(db)).toEqual([]);
+    expect(db.prepare('SELECT * FROM users ORDER BY id').all()).toEqual(at003.users);
+    expect(db.prepare('SELECT * FROM password_credentials ORDER BY user_id').all()).toEqual(at003.credentials);
+    expect(db.prepare('SELECT * FROM projects ORDER BY id').all()).toEqual(before.projects);
+    expect(db.prepare('SELECT * FROM project_profiles').all()).toEqual(before.profiles);
+    expect(db.prepare('SELECT * FROM project_progress').all()).toEqual(before.progress);
+    expect(db.prepare('SELECT * FROM sessions').all()).toEqual(before.sessions);
+    expect(count(db, 'project_profile_provenance')).toBe(0);
+    expect(db.prepare('PRAGMA integrity_check').get().integrity_check).toBe('ok');
+
+    const ins = db.prepare('INSERT INTO project_profile_provenance VALUES (?, ?, ?, ?, ?)');
+    ins.run(pa, 'other-device', '{"ramGiB":{"source":"import","certainty":"reported","capturedAt":"2026-11-20T10:00:00.000Z"}}', null, NOW);
+    expect(() => ins.run(pb, 'servidor', '{}', null, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(pb, 'this-device', '[]', null, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(pb, 'this-device', 'no-json', null, NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(pb, 'this-device', '{}', 'v'.repeat(41), NOW)).toThrow(/CHECK/);
+    expect(() => ins.run(pb, 'this-device', '{}', null, 'ayer')).toThrow(/CHECK/);
+    expect(() => ins.run(randomUUID(), 'this-device', '{}', null, NOW)).toThrow(/FOREIGN KEY/);
+    expect(() => ins.run(pa, 'this-device', '{}', null, NOW)).toThrow(/UNIQUE|PRIMARY/);
+    db.prepare('DELETE FROM project_selections WHERE project_id = ?').run(pa);
+    db.prepare('DELETE FROM projects WHERE id = ?').run(pa);
+    expect(count(db, 'project_profile_provenance')).toBe(0);
   });
 
   it('identidades: (provider, subject) único, un vínculo Google por usuario, proveedor y sub válidos', () => {
@@ -543,7 +582,7 @@ describe('pnpm db:migrate (runMigrateCli)', () => {
     expect(out2.log).toHaveBeenCalledWith(expect.stringMatching(/sin migraciones pendientes/));
     const db = openDatabase(path);
     open.push(db);
-    expect(count(db, 'schema_migrations')).toBe(3);
+    expect(count(db, 'schema_migrations')).toBe(4);
   });
 
   it('termina con código 1 y mensaje claro ante ruta inválida, sin crear carpetas', () => {

@@ -93,6 +93,115 @@ export function parseProfile(body) {
   return Object.fromEntries(PROFILE_FIELDS.map((key) => [key, body[key]]));
 }
 
+// ---------------------------------------------------------------------------
+// Procedencia por campo (entrega 007, migración 004). Opcional en el PUT del
+// perfil: un cliente antiguo que no la envía guarda todo como manual/declared.
+// El diagnóstico completo nunca llega aquí: solo el perfil normalizado y, por
+// campo, origen + certeza + fecha de captura. Solo se admiten combinaciones
+// coherentes: el navegador solo aproxima CPU lógica y RAM de ESTE equipo; el
+// diagnóstico solo informa hardware/SO. Uso, datos, acceso, dominio, tipo de
+// disco y x86-64-v2 son siempre declarados por la persona.
+
+export const PROVENANCE_TARGETS = Object.freeze(['this-device', 'other-device']);
+export const PROVENANCE_SOURCES = Object.freeze({
+  manual: { certainty: 'declared', fields: PROFILE_FIELDS, captured: false },
+  browser: { certainty: 'approximate', fields: ['cpuCores', 'ramGiB'], captured: true },
+  import: { certainty: 'reported', fields: ['cpuCores', 'ramGiB', 'storageGiB', 'os', 'architecture'], captured: true },
+});
+const PROVENANCE_KEYS = ['target', 'fields', 'collectorVersion'];
+const ENTRY_KEYS = ['capturedAt', 'certainty', 'source'];
+const COLLECTOR_VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,39}$/;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+export const CAPTURE_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+const MANUAL_ENTRY = Object.freeze({ source: 'manual', certainty: 'declared', capturedAt: null });
+
+function isInstant(value, nowMs) {
+  if (typeof value !== 'string' || !ISO_INSTANT.test(value)) return false;
+  const ms = Date.parse(value);
+  // Rechaza fechas imposibles (p. ej. 30 de febrero) comparando la ida y vuelta.
+  if (!Number.isFinite(ms) || new Date(ms).toISOString().slice(0, 19) !== value.slice(0, 19)) return false;
+  return ms <= nowMs + CAPTURE_FUTURE_TOLERANCE_MS;
+}
+
+const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Valida la procedencia enviada con el perfil. Devuelve {target, collectorVersion,
+ * fields} donde fields solo contiene los campos NO manuales, en orden canónico.
+ */
+export function parseProvenance(value, nowMs) {
+  const fields = Object.create(null);
+  if (!isPlainObject(value)) throw validationError('La procedencia del perfil no es válida.', { provenance: 'Debe ser un objeto.' });
+  for (const key of Object.keys(value)) {
+    if (!PROVENANCE_KEYS.includes(key)) fields[`provenance.${key}`] = 'Campo no permitido.';
+  }
+  const target = value.target;
+  if (typeof target !== 'string' || !PROVENANCE_TARGETS.includes(target)) {
+    fields['provenance.target'] = `Debe ser uno de: ${PROVENANCE_TARGETS.join(', ')}.`;
+  }
+  const version = value.collectorVersion ?? null;
+  if (version !== null && (typeof version !== 'string' || !COLLECTOR_VERSION.test(version))) {
+    fields['provenance.collectorVersion'] = 'Debe ser null o una versión de hasta 40 caracteres.';
+  }
+  const entries = Object.create(null);
+  if (!isPlainObject(value.fields)) {
+    fields['provenance.fields'] = 'Debe ser un objeto.';
+  } else {
+    for (const key of Object.keys(value.fields)) {
+      const path = `provenance.fields.${key}`;
+      if (!PROFILE_FIELDS.includes(key)) {
+        fields[path] = 'Campo no permitido.';
+        continue;
+      }
+      const entry = value.fields[key];
+      if (!isPlainObject(entry) || Object.keys(entry).sort().join() !== ENTRY_KEYS.join()) {
+        fields[path] = 'Debe tener exactamente source, certainty y capturedAt.';
+        continue;
+      }
+      const rule = typeof entry.source === 'string' && Object.hasOwn(PROVENANCE_SOURCES, entry.source) ? PROVENANCE_SOURCES[entry.source] : null;
+      if (!rule) fields[path] = 'Origen no válido.';
+      else if (entry.certainty !== rule.certainty) fields[path] = `Con origen ${entry.source} la certeza debe ser ${rule.certainty}.`;
+      else if (!rule.fields.includes(key)) fields[path] = `Este campo no puede tener origen ${entry.source}.`;
+      else if (rule.captured ? !isInstant(entry.capturedAt, nowMs) : entry.capturedAt !== null) {
+        fields[path] = rule.captured ? 'Fecha de captura no válida o en el futuro.' : 'Un dato manual no tiene fecha de captura.';
+      } else if (entry.source === 'browser' && target !== 'this-device') {
+        fields[path] = 'El navegador solo describe este equipo.';
+      } else if (entry.source !== 'manual') {
+        entries[key] = { source: entry.source, certainty: entry.certainty, capturedAt: entry.capturedAt };
+      }
+    }
+  }
+  if (Object.keys(fields).length) throw validationError('La procedencia del perfil no es válida.', fields);
+  return {
+    target,
+    collectorVersion: version,
+    fields: Object.fromEntries(PROFILE_FIELDS.filter((key) => entries[key]).map((key) => [key, entries[key]])),
+  };
+}
+
+/** Cuerpo del PUT: perfil completo y, opcionalmente, `provenance`. */
+export function parseProfileRequest(body, nowMs) {
+  if (!isPlainObject(body)) throw validationError('El cuerpo debe ser un objeto JSON.');
+  const rest = Object.create(null);
+  for (const key of Object.keys(body)) if (key !== 'provenance') rest[key] = body[key];
+  const profile = parseProfile(rest);
+  const provenance = Object.hasOwn(body, 'provenance') && body.provenance !== null ? parseProvenance(body.provenance, nowMs) : null;
+  return { profile, provenance };
+}
+
+/** Origen/certeza efectivos por campo: lo que, si cambia, cambia la revisión. */
+const effectiveKey = (fields) => PROFILE_FIELDS.map((key) => (fields[key] ? `${fields[key].source}/${fields[key].certainty}` : 'manual/declared')).join('|');
+
+function toProvenanceDto(row) {
+  const stored = row ? JSON.parse(row.fields) : {};
+  return {
+    target: row ? row.target : null,
+    collectorVersion: row ? row.collector_version : null,
+    updatedAt: row ? row.updated_at : null,
+    fields: Object.fromEntries(PROFILE_FIELDS.map((key) => [key, Object.hasOwn(stored, key) ? { ...stored[key] } : { ...MANUAL_ENTRY }])),
+  };
+}
+
 function toRow(profile) {
   return [
     profile.cpuCores,
@@ -194,6 +303,17 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
          has_domain = excluded.has_domain, cpu_features_known = excluded.cpu_features_known,
          revision = excluded.revision, updated_at = excluded.updated_at`,
     ),
+    provenance: db.prepare(
+      `SELECT v.target, v.fields, v.collector_version, v.updated_at FROM project_profile_provenance v
+       JOIN projects p ON p.id = v.project_id WHERE v.project_id = ? AND p.owner_id = ?`,
+    ),
+    upsertProvenance: db.prepare(
+      `INSERT INTO project_profile_provenance (project_id, target, fields, collector_version, updated_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (project_id) DO UPDATE SET
+         target = excluded.target, fields = excluded.fields,
+         collector_version = excluded.collector_version, updated_at = excluded.updated_at`,
+    ),
+    deleteProvenance: db.prepare('DELETE FROM project_profile_provenance WHERE project_id = ?'),
   };
 
   /** Estado actual (perfil, evaluación, plan) de un proyecto propio ya comprobado. */
@@ -203,7 +323,10 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
     const alternativeIds = sql.selection.all(project.id).map((s) => s.alternative_id);
     const evaluation = evaluate({ profile, alternativeIds, catalogNames, rules });
     const plan = buildPlan({ projectId: project.id, projectName: project.name, alternativeIds, profile, evaluation, catalogNames });
-    return { profile, evaluation, plan };
+    // Procedencia aparte del perfil: el fingerprint del plan sigue dependiendo
+    // del perfil (con su revisión), que sube cuando cambia origen/certeza.
+    const provenance = profile ? toProvenanceDto(sql.provenance.get(project.id, ownerId)) : null;
+    return { profile, provenance, evaluation, plan };
   }
 
   /** El avance solo se aplica si su fingerprint coincide con el plan actual; nunca se traslada. */
@@ -217,8 +340,8 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
 
   /** Llamar solo tras comprobar la propiedad del proyecto. */
   function workflowDocument(project, ownerId) {
-    const { profile, evaluation, plan } = currentState(project, ownerId);
-    return { profile, evaluation, plan, progress: progressFor(project.id, plan) };
+    const { profile, provenance, evaluation, plan } = currentState(project, ownerId);
+    return { profile, provenance, evaluation, plan, progress: progressFor(project.id, plan) };
   }
 
   router.get('/:id/workflow', ...read, (req, res) => {
@@ -254,15 +377,29 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
 
   router.put('/:id/profile', ...write, (req, res) => {
     const id = parseProjectId(req.params.id);
-    const profile = parseProfile(req.body);
+    const at = timestamp();
+    const { profile, provenance } = parseProfileRequest(req.body, Date.parse(at));
     const ownerId = req.user.id;
+    // Perfil y procedencia se guardan juntos o nada. La revisión sube si cambian
+    // los valores O el origen/certeza efectivos de algún campo (invalida el plan);
+    // destino, fecha de captura o versión solos no cambian la evaluación.
     const project = transaction(() => {
       const owned = sql.owned.get(id, ownerId);
       if (!owned) return null;
       const current = sql.profile.get(id, ownerId);
-      if (current && sameContent(toProfileDto(current), profile)) return owned; // sin cambios: misma revisión
-      const revision = current ? current.revision + 1 : 1;
-      sql.upsert.run(id, ...toRow(profile), revision, timestamp());
+      const previous = sql.provenance.get(id, ownerId);
+      const nextFields = provenance ? provenance.fields : {};
+      const sameEffective = effectiveKey(previous ? JSON.parse(previous.fields) : {}) === effectiveKey(nextFields);
+      if (!current || !sameContent(toProfileDto(current), profile) || !sameEffective) {
+        sql.upsert.run(id, ...toRow(profile), current ? current.revision + 1 : 1, at);
+      }
+      if (!provenance) {
+        if (previous) sql.deleteProvenance.run(id);
+      } else {
+        const json = JSON.stringify(nextFields);
+        const unchanged = previous && previous.target === provenance.target && previous.fields === json && previous.collector_version === provenance.collectorVersion;
+        if (!unchanged) sql.upsertProvenance.run(id, provenance.target, json, provenance.collectorVersion, at);
+      }
       return owned;
     });
     if (!project) throw notFound();
