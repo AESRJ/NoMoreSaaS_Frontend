@@ -321,11 +321,12 @@ export function mountWorkflow(router, { db, read, write, parseProjectId, notFoun
     const row = sql.profile.get(project.id, ownerId);
     const profile = row ? toProfileDto(row) : null;
     const alternativeIds = sql.selection.all(project.id).map((s) => s.alternative_id);
-    const evaluation = evaluate({ profile, alternativeIds, catalogNames, rules });
-    const plan = buildPlan({ projectId: project.id, projectName: project.name, alternativeIds, profile, evaluation, catalogNames });
     // Procedencia aparte del perfil: el fingerprint del plan sigue dependiendo
-    // del perfil (con su revisión), que sube cuando cambia origen/certeza.
+    // del perfil (con su revisión), que sube cuando cambia origen/certeza; la
+    // evaluación usa la certeza GUARDADA, nunca la del formulario.
     const provenance = profile ? toProvenanceDto(sql.provenance.get(project.id, ownerId)) : null;
+    const evaluation = evaluate({ profile, alternativeIds, catalogNames, rules, provenance: provenance?.fields ?? null });
+    const plan = buildPlan({ projectId: project.id, projectName: project.name, alternativeIds, profile, evaluation, catalogNames });
     return { profile, provenance, evaluation, plan };
   }
 

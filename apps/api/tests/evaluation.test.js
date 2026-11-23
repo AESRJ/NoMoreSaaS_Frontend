@@ -35,7 +35,7 @@ describe('evaluate', () => {
     const a = run(['nextcloud', 'outline']);
     const b = run(['nextcloud', 'outline']);
     expect(a).toEqual(b);
-    expect(a.rulesVersion).toBe('2026-11-22.1');
+    expect(a.rulesVersion).toBe('2026-11-22.2');
     expect(a.totals).toMatchObject({
       loadFactor: 1,
       ramGiB: { base: 4, required: 5, available: 16 }, // (2 + 2) × 1 × 1,25
@@ -127,6 +127,78 @@ describe('evaluate', () => {
     expect(e.status).toBe('pending');
     expect(codes(e)).toEqual(expect.arrayContaining(['https-domain-missing', 'network-udp-unverified']));
     expect(codes(run(['nextcloud'], { access: 'internet', hasDomain: true }))).not.toContain('https-domain-missing');
+  });
+});
+
+describe('certeza de los datos (007, ProfileProvenance.fields)', () => {
+  const browser = { source: 'browser', certainty: 'approximate', capturedAt: '2026-11-22T09:00:00.000Z' };
+  const imported = { source: 'import', certainty: 'reported', capturedAt: '2026-11-21T09:00:00.000Z' };
+  const withProv = (alternativeIds, provenance, overrides = {}) =>
+    evaluate({ profile: { ...BASE, ...overrides }, alternativeIds, catalogNames, rules, provenance });
+  const resource = (e, key) => e.summary.resources.find((r) => r.key === key);
+
+  it('resumen de tres recursos con origen y una siguiente acción; sin procedencia todo es declarado', () => {
+    const e = run(['nextcloud', 'wireguard']);
+    expect(e.summary.resources.map((r) => [r.key, r.fits, r.source, r.certainty])).toEqual([
+      ['cpu', true, 'manual', 'declared'],
+      ['ram', true, 'manual', 'declared'],
+      ['disk', true, 'manual', 'declared'],
+    ]);
+    expect(resource(e, 'ram')).toMatchObject({ required: e.totals.ramGiB.required, available: 16, unit: 'GiB' });
+    expect(e.summary.nextAction).toMatchObject({ code: 'start-plan', target: 'plan' });
+    // Procedencia explícitamente manual = mismo resultado que sin procedencia.
+    expect(withProv(['nextcloud', 'wireguard'], { ramGiB: { source: 'manual', certainty: 'declared', capturedAt: null } })).toEqual(e);
+  });
+
+  it('CPU/RAM aproximadas que caben: nunca viable, pendiente con motivo y acción de confirmar', () => {
+    const e = withProv(['nextcloud', 'wireguard'], { cpuCores: browser, ramGiB: browser });
+    expect(e.status).toBe('pending');
+    expect(e.warnings[0]).toMatchObject({ code: 'approximate-data', severity: 'pending', alternativeId: null });
+    expect(e.warnings[0].text).toMatch(/CPU y RAM son aproximadas/);
+    expect(resource(e, 'ram')).toMatchObject({ fits: true, source: 'browser', certainty: 'approximate' });
+    expect(e.summary.nextAction).toMatchObject({ code: 'confirm-approximate', target: 'equipo' });
+    // Los totales numéricos no cambian por la certeza.
+    expect(e.totals).toEqual(run(['nextcloud', 'wireguard']).totals);
+  });
+
+  it('RAM aproximada insuficiente: pendiente de confirmar, no bloqueo afirmado; la declarada sí bloquea', () => {
+    const approx = withProv(['immich'], { ramGiB: browser }, { ramGiB: 4, cpuFeaturesKnown: true });
+    expect(codes(approx)).toContain('ram-unconfirmed');
+    expect(codes(approx)).not.toContain('ram-insufficient');
+    expect(approx.status).toBe('pending');
+    expect(approx.warnings.find((w) => w.code === 'ram-unconfirmed').text).toMatch(/aproximado por el navegador 4 GiB < .* confírmalo/);
+    expect(resource(approx, 'ram')).toMatchObject({ fits: false, certainty: 'approximate' });
+
+    const declared = run(['immich'], { ramGiB: 4, cpuFeaturesKnown: true });
+    expect(declared.status).toBe('insufficient');
+    expect(declared.summary.nextAction).toMatchObject({ code: 'increase-resources', target: 'equipo' });
+    expect(declared.summary.nextAction.text).toMatch(/Amplía RAM/);
+  });
+
+  it('importado (informado) cuenta como dato real: puede ser viable o insuficiente, sin falsas reservas', () => {
+    const ok = withProv(['nextcloud', 'wireguard'], { cpuCores: imported, ramGiB: imported, storageGiB: imported });
+    expect(ok.status).toBe('viable');
+    expect(resource(ok, 'disk')).toMatchObject({ source: 'import', certainty: 'reported' });
+    const short = withProv(['immich'], { ramGiB: imported }, { ramGiB: 4, cpuFeaturesKnown: true });
+    expect(short.status).toBe('insufficient');
+    expect(short.warnings[0]).toMatchObject({ code: 'ram-insufficient', severity: 'blocking' });
+    expect(short.warnings[0].text).toMatch(/^RAM informado por el diagnóstico 4 GiB </);
+  });
+
+  it('siguiente acción: alternativas retiradas → proyecto; datos desconocidos → equipo; otras condiciones → plan', () => {
+    expect(run(['nextcloud', 'ya-no-existe']).summary.nextAction).toMatchObject({ code: 'replace-alternatives', target: 'proyecto' });
+    expect(run(['nextcloud'], { os: 'unknown' }).summary.nextAction).toMatchObject({ code: 'complete-profile', target: 'equipo' });
+    expect(run(['nextcloud', 'wireguard'], { access: 'internet' }).summary.nextAction).toMatchObject({ code: 'resolve-pending', target: 'plan' });
+  });
+
+  it('el aviso aproximado llega a las condiciones pendientes de cada paso del plan', async () => {
+    const { buildPlan } = await import('../src/plan.js');
+    const profile = { ...BASE };
+    const evaluation = withProv(['nextcloud'], { ramGiB: browser });
+    const plan = buildPlan({ projectId: 'p', projectName: 'P', alternativeIds: ['nextcloud'], profile, evaluation, catalogNames });
+    expect(plan.blocked).toBe(false);
+    expect(plan.steps.every((s) => s.pending.some((p) => p.code === 'approximate-data'))).toBe(true);
+    expect(plan.rulesVersion).toBe('2026-11-22.2');
   });
 });
 

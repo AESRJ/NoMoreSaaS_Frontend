@@ -3,13 +3,18 @@
 // plantillas versionadas. Los prompts son texto para copiar: sin claves,
 // sin ejecución remota y sin llamadas a IA externa.
 import { createHash } from 'node:crypto';
-import { PROMPT_CONSTRAINTS, STAGES, STAGE_LABELS, TEMPLATES, TEMPLATES_VERSION } from './plan-templates.js';
+import { PROMPT_CONSTRAINTS, STAGES, STAGE_LABELS, STEP_BLOCKS, TEMPLATES, TEMPLATES_VERSION } from './plan-templates.js';
 
-export { TEMPLATES_VERSION };
+export { STEP_BLOCKS, TEMPLATES_VERSION };
 
 const OS_LABELS = { linux: 'Linux', windows: 'Windows', macos: 'macOS', unknown: 'desconocido' };
 const STORAGE_LABELS = { ssd: 'SSD', hdd: 'HDD', network: 'almacenamiento de red', unknown: 'tipo desconocido' };
 const STATUS_LABELS = { viable: 'cabe en el presupuesto editorial', pending: 'condiciones pendientes', insufficient: 'recursos o plataforma insuficientes' };
+const ORIGIN_LABELS = {
+  declared: 'declarado a mano',
+  reported: 'importado del diagnóstico',
+  approximate: 'aproximado por el navegador, pendiente de confirmar',
+};
 
 const fmt = (n) => String(n).replace('.', ',');
 
@@ -55,31 +60,42 @@ function profileLine(p) {
 
 const bullets = (lines) => lines.map((line) => `- ${line}`).join('\n');
 
+/** Origen de CPU/RAM/disco según la certeza GUARDADA (resumen de la evaluación 007). */
+function originLine(evaluation) {
+  const resources = evaluation.summary?.resources;
+  if (!Array.isArray(resources) || !resources.length) return null;
+  return resources.map((r) => `${r.label} ${ORIGIN_LABELS[r.certainty] ?? ORIGIN_LABELS.declared}`).join('; ');
+}
+
+/**
+ * Prompt copiable con los bloques de FR-007: objetivo, contexto relevante,
+ * antes de empezar, acciones, seguridad, cómo comprobar y cómo volver atrás.
+ * Solo datos normalizados del perfil (números y enumerados), nunca cadenas
+ * importadas, rutas ni secretos.
+ */
 function buildPrompt({ projectName, altName, otherNames, stage, template, profile, evaluation, pending, fingerprint }) {
-  return [
-    `Contexto: proyecto NoMoreSaaS «${projectName}» (plan ${fingerprint.slice(0, 12)}, reglas ${evaluation.rulesVersion}, plantillas ${TEMPLATES_VERSION}).`,
-    `Objetivo: ${STAGE_LABELS[stage]} de ${altName} — ${template.title}.`,
+  const origin = originLine(evaluation);
+  const context = [
+    `Proyecto NoMoreSaaS «${projectName}» (plan ${fingerprint.slice(0, 12)}, reglas ${evaluation.rulesVersion}, plantillas ${TEMPLATES_VERSION}).`,
     otherNames.length ? `Otras alternativas del proyecto: ${otherNames.join(', ')}.` : 'Es la única alternativa del proyecto.',
-    `Equipo declarado: ${profileLine(profile)}.`,
+    `Equipo guardado: ${profileLine(profile)}.`,
+    ...(origin ? [`Origen de los datos: ${origin}.`] : []),
     `Estimación orientativa: ${STATUS_LABELS[evaluation.status]}; RAM estimada ${fmt(evaluation.totals.ramGiB.required)} GiB, ${fmt(evaluation.totals.cpuCores.required)} núcleos, ${fmt(evaluation.totals.diskGiB.required)} GiB de disco. No es una garantía.`,
+  ];
+  const lines = [
+    `Objetivo: ${STAGE_LABELS[stage]} de ${altName} — ${template.title}. ${template.explanation}`,
     '',
-    template.explanation,
+    'Contexto relevante:',
+    bullets(context),
     '',
-    'Condiciones pendientes:',
+    'Condiciones pendientes (resuélvelas o pregúntame antes de seguir):',
     pending.length ? bullets(pending.map((w) => w.text)) : '- Ninguna declarada; confirma igualmente los requisitos de la versión que instales.',
-    '',
-    'Tareas de esta etapa:',
-    bullets(template.tasks),
-    '',
-    'Restricciones:',
-    bullets(PROMPT_CONSTRAINTS),
-    '',
-    'Fuentes oficiales:',
-    bullets(template.sources.map((s) => `${s.label}: ${s.url}`)),
-    '',
-    'Validación esperada:',
-    bullets(template.validation),
-  ].join('\n');
+  ];
+  for (const block of STEP_BLOCKS) {
+    lines.push('', `${block.label}:`, bullets(template[block.key]));
+  }
+  lines.push('', 'Reglas para tu respuesta:', bullets(PROMPT_CONSTRAINTS), '', 'Fuentes oficiales:', bullets(template.sources.map((s) => `${s.label}: ${s.url}`)));
+  return lines.join('\n');
 }
 
 /**
@@ -117,8 +133,11 @@ export function buildPlan({ projectId, projectName, alternativeIds, profile, eva
         stageLabel: STAGE_LABELS[stage],
         title: template.title,
         explanation: template.explanation,
+        prechecks: [...template.prechecks],
         tasks: [...template.tasks],
+        security: [...template.security],
         validation: [...template.validation],
+        rollback: [...template.rollback],
         sources: template.sources.map((s) => ({ ...s })),
         pending: pending.map((w) => ({ code: w.code, text: w.text })),
         prompt: buildPrompt({ projectName, altName, otherNames, stage, template, profile, evaluation, pending, fingerprint }),

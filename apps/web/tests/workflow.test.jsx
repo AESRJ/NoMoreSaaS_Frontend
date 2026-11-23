@@ -76,8 +76,11 @@ const step = (stage, stageLabel) => ({
   stageLabel,
   title: `${stageLabel} de Archivero`,
   explanation: `Explicación ${stage}.`,
+  prechecks: [`Comprobación previa ${stage}`],
   tasks: [`Tarea ${stage}`],
+  security: [`Seguridad ${stage}`],
   validation: [`Validación ${stage}`],
+  rollback: [`Volver atrás ${stage}`],
   sources: [{ label: 'Docs Archivero', url: 'https://archivero.example.org/docs' }],
   pending: [{ code: 'domain-required', text: 'Requiere un dominio.' }],
   prompt: `Contexto: «Mi nube» <script>x</script>\nEtapa ${stage}`,
@@ -258,6 +261,22 @@ describe('/proyectos/:id/flujo', () => {
     expect(screen.getAllByText(/<script>x<\/script>/).length).toBeGreaterThan(0);
     expect(container.querySelector('main script')).toBeNull();
     expect(screen.getByText('0 de 2 pasos completados.')).toBeInTheDocument();
+    // 007 FR-007: objetivo y bloques en orden en cada paso.
+    const firstStep = screen.getByRole('checkbox', { name: 'Preparación Preparación de Archivero' }).closest('li');
+    const headings = within(firstStep).getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(headings.slice(0, 5)).toEqual(['Antes de empezar (solo comprobaciones)', 'Acciones propuestas', 'Seguridad', 'Cómo comprobar', 'Cómo volver atrás']);
+    expect(within(firstStep).getByText('Objetivo:')).toBeInTheDocument();
+    for (const text of ['Comprobación previa preparation', 'Tarea preparation', 'Seguridad preparation', 'Validación preparation', 'Volver atrás preparation']) {
+      expect(within(firstStep).getByText(text)).toBeInTheDocument();
+    }
+  });
+
+  it('plan de un servidor anterior sin bloques nuevos: muestra los que hay, sin huecos', async () => {
+    const legacyStep = (step) => Object.fromEntries(Object.entries(step).filter(([key]) => !['prechecks', 'security', 'rollback'].includes(key)));
+    open('plan', client({ getWorkflow: vi.fn(() => Promise.resolve(doc({ plan: { ...PLAN, steps: PLAN.steps.map(legacyStep) } }))) }));
+    const firstStep = (await screen.findByRole('checkbox', { name: 'Preparación Preparación de Archivero' })).closest('li');
+    expect(within(firstStep).getAllByRole('heading', { level: 3 }).map((h) => h.textContent).slice(0, 2)).toEqual(['Acciones propuestas', 'Cómo comprobar']);
+    expect(within(firstStep).queryByText('Seguridad')).not.toBeInTheDocument();
   });
 
   it('marcar avance: un solo guardado a la vez (casillas deshabilitadas) y resultado del servidor', async () => {
@@ -319,6 +338,80 @@ describe('/proyectos/:id/flujo', () => {
     expect(screen.getByText('Sustituye gitea.')).toBeInTheDocument();
     expect(screen.getByText(/ya no están en el catálogo \(gitea\)/)).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /editar/i })[0]).toHaveAttribute('href', `/proyectos/${P1}/editar`);
+  });
+
+  describe('evaluación 007: resumen, origen y siguiente paso', () => {
+    const res = (key, label, unit, required, available, certainty, source) => ({ key, label, unit, required, available, fits: available >= required, source, certainty });
+    const evalWith = (status, resources, nextAction, warnings = EVALUATION.warnings) => ({ ...EVALUATION, status, warnings, summary: { resources, nextAction } });
+    const openEval = (evaluation) => open('evaluacion', client({ getWorkflow: vi.fn(() => Promise.resolve(doc({ evaluation }))) }));
+    const card = (label) => screen.getByRole('heading', { level: 3, name: label }).closest('li');
+
+    it('viable con datos importados: resumen primero, «Importado», acción hacia el plan y cálculos plegados', async () => {
+      const evaluation = evalWith(
+        'viable',
+        [res('cpu', 'CPU', 'núcleos', 2, 4, 'reported', 'import'), res('ram', 'RAM', 'GiB', 2.5, 8, 'reported', 'import'), res('disk', 'Disco', 'GiB', 66.5, 500, 'declared', 'manual')],
+        { code: 'start-plan', target: 'plan', text: 'Sigue el plan por etapas; empieza por la preparación del servidor.' },
+        [EVALUATION.warnings[1]],
+      );
+      openEval(evaluation);
+      expect(await screen.findByText('Cabe en el presupuesto orientativo')).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Importado')).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Suficiente')).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Tu equipo: 8 GiB · Estimado: 2,5 GiB')).toBeInTheDocument();
+      expect(within(card('Disco')).getByText('Declarado')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Siguiente paso' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ir al plan' })).toHaveAttribute('href', `/proyectos/${P1}/flujo?vista=plan`);
+      // Fuentes y cálculos en un desplegable cerrado por defecto.
+      const details = screen.getByText('Ver fuentes y cálculos').closest('details');
+      expect(details).not.toHaveAttribute('open');
+      expect(within(details).getByText('RAM requerida = 2 × 1 × 1,25 = 2,5 GiB')).toBeInTheDocument();
+      expect(within(details).getByText('Resumen oficial de Archivero.')).toBeInTheDocument();
+      // Motivos antes que el detalle.
+      const motives = screen.getByRole('heading', { name: 'Motivos y condiciones' });
+      expect(motives.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('pendiente con CPU/RAM aproximadas: etiquetadas, «pendiente de confirmar» aunque quepan y acción hacia Equipo', async () => {
+      const evaluation = evalWith(
+        'pending',
+        [res('cpu', 'CPU', 'núcleos', 2, 4, 'approximate', 'browser'), res('ram', 'RAM', 'GiB', 2.5, 8, 'approximate', 'browser'), res('disk', 'Disco', 'GiB', 66.5, 500, 'declared', 'manual')],
+        { code: 'confirm-approximate', target: 'equipo', text: 'Confirma CPU y RAM con el diagnóstico de Windows o escribiéndolas a mano, y guarda el equipo.' },
+        [{ code: 'approximate-data', severity: 'pending', alternativeId: null, text: 'CPU y RAM son aproximadas (navegador).', source: null }],
+      );
+      openEval(evaluation);
+      expect(await screen.findByText('Pendiente de comprobar')).toBeInTheDocument();
+      expect(screen.getByText(/CPU y RAM son aproximadas: hasta que lo confirmes/)).toBeInTheDocument();
+      expect(within(card('CPU')).getByText('Aproximado')).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Parece suficiente; pendiente de confirmar')).toBeInTheDocument();
+      expect(within(card('RAM')).queryByText('Suficiente')).not.toBeInTheDocument();
+      expect(screen.getByText('CPU y RAM son aproximadas (navegador).')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ir a Equipo' })).toHaveAttribute('href', `/proyectos/${P1}/flujo?vista=equipo`);
+    });
+
+    it('insuficiente declarado: «Insuficiente», bloqueo visible y acción de ampliar el equipo', async () => {
+      const evaluation = evalWith(
+        'insufficient',
+        [res('cpu', 'CPU', 'núcleos', 2, 4, 'declared', 'manual'), res('ram', 'RAM', 'GiB', 2.5, 2, 'declared', 'manual'), res('disk', 'Disco', 'GiB', 66.5, 500, 'declared', 'manual')],
+        { code: 'increase-resources', target: 'equipo', text: 'Amplía RAM del equipo, o reduce usuarios, datos previstos o alternativas, y vuelve a guardar.' },
+        [{ code: 'ram-insufficient', severity: 'blocking', alternativeId: null, text: 'RAM declarada 2 GiB < 2,5 GiB estimados.', source: null }],
+      );
+      openEval(evaluation);
+      expect(await screen.findByText('Insuficiente', { selector: '.flow-status' })).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Insuficiente')).toBeInTheDocument();
+      expect(screen.getByText('Bloquea')).toBeInTheDocument();
+      expect(screen.getByText(/Amplía RAM del equipo/)).toBeInTheDocument();
+    });
+
+    it('acción de sustituir alternativas enlaza a editar el proyecto; servidor sin resumen sigue mostrando CPU/RAM/disco', async () => {
+      const evaluation = evalWith('insufficient', [res('cpu', 'CPU', 'núcleos', 2, 4, 'declared', 'manual')], { code: 'replace-alternatives', target: 'proyecto', text: 'Sustituye en el proyecto las alternativas retiradas.' });
+      const view = openEval(evaluation);
+      expect(await screen.findByRole('link', { name: 'Editar el proyecto' })).toHaveAttribute('href', `/proyectos/${P1}/editar`);
+      view.unmount();
+      openEval(EVALUATION);
+      expect(await screen.findByRole('heading', { level: 3, name: 'Disco' })).toBeInTheDocument();
+      expect(within(card('RAM')).getByText('Declarado')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Siguiente paso' })).not.toBeInTheDocument();
+    });
   });
 
   it('error de carga con reintento; proyecto ajeno o inexistente = no encontrado', async () => {

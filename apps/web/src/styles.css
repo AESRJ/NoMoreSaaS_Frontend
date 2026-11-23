@@ -2311,3 +2311,121 @@ textarea.prompt-box__text {
     flex: 1 1 auto;
   }
 }
+
+/* 007 Evaluación: resumen CPU/RAM/disco con origen, siguiente paso y detalle
+   desplegable; bloques de cada paso del plan. Tono también por texto/insignia. */
+.flow-resources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-resource {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.flow-resource--ok {
+  border-left-color: var(--accent-line);
+}
+
+.flow-resource--warn {
+  border-left-color: var(--warn-line);
+  border-left-style: dashed;
+}
+
+.flow-resource--danger {
+  border-left-color: var(--danger-line);
+}
+
+.flow-resource__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.6rem;
+}
+
+.flow-resource__head h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.flow-resource__verdict {
+  margin: 0.35rem 0 0.15rem;
+  font-weight: 700;
+}
+
+.flow-resource--warn .flow-resource__verdict {
+  color: var(--warn-ink);
+}
+
+.flow-resource--danger .flow-resource__verdict {
+  color: var(--danger-ink);
+}
+
+.flow-resource__numbers {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-next {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.flow-next h3 {
+  margin: 0 0 0.25rem;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flow-next p {
+  margin: 0 0 0.6rem;
+  max-width: 75ch;
+}
+
+.flow-details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.flow-details__title {
+  margin: 1rem 0 0.4rem;
+  font-size: var(--text-md);
+}
+
+.flow-item h4 {
+  font-size: var(--text-md);
+  margin: 0 0 0.35rem;
+}
+
+.flow-step__block--security {
+  margin-top: 0.5rem;
+  padding: 0.1rem 0.85rem 0.4rem;
+  border-left: 3px solid var(--accent-line);
+}
+
+/* Grid/flex hijos: permitir encoger para que .table-scroll desplace en vez de
+   ensanchar la página a 360 px. */
+.detail-section,
+.flow-details {
+  min-width: 0;
+  max-width: 100%;
+}

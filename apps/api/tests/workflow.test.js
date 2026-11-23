@@ -305,12 +305,45 @@ describe('PUT /api/projects/:id/profile', () => {
     const id = created.body.project.id;
     const local = { ...PROFILE, access: 'local', cpuFeaturesKnown: true };
     const put = await putProfile(ana, id, local);
-    expect(put.body.evaluation).toMatchObject({ status: 'viable', rulesVersion: '2026-11-22.1' });
+    expect(put.body.evaluation).toMatchObject({ status: 'viable', rulesVersion: '2026-11-22.2' });
     expect(put.body.evaluation.totals.ramGiB).toEqual({ base: 2.25, required: 2.81, available: 7.5 });
     expect((await getWorkflow(ana, id)).body.evaluation).toEqual(put.body.evaluation);
     const small = await putProfile(ana, id, { ...local, ramGiB: 2, storageGiB: 10 });
     expect(small.body.evaluation.status).toBe('insufficient');
     expect(small.body.evaluation.warnings.slice(0, 2).map((w) => w.code)).toEqual(['ram-insufficient', 'disk-insufficient']);
+  });
+
+  it('seed real: la evaluación usa la certeza guardada (3 estados) y confirmar a mano invalida el avance', async () => {
+    const seed = await loadCatalog(DEFAULT_CATALOG_PATH, { requireSeedCoverage: true });
+    const { app } = build({ catalogData: seed });
+    const ana = await signUp(app, 'ana@example.com');
+    const created = await send(ana.agent, 'post', '/api/projects', { name: 'Equipo', alternativeIds: ['nextcloud', 'wireguard'] }, ana.token);
+    const id = created.body.project.id;
+    const local = { ...PROFILE, access: 'local', cpuFeaturesKnown: true };
+    const browser = { source: 'browser', certainty: 'approximate', capturedAt: '2026-11-22T09:00:00.000Z' };
+
+    // Mismos números, aproximados: pendiente (nunca viable) y lo indica el resumen.
+    const approx = await putProfile(ana, id, { ...local, provenance: { target: 'this-device', fields: { cpuCores: browser, ramGiB: browser } } });
+    expect(approx.body.evaluation.status).toBe('pending');
+    expect(approx.body.evaluation.summary.nextAction.code).toBe('confirm-approximate');
+    expect(approx.body.evaluation.summary.resources.find((r) => r.key === 'ram')).toMatchObject({ certainty: 'approximate', source: 'browser' });
+    expect(approx.body.plan.steps[0].pending.map((p) => p.code)).toContain('approximate-data');
+    // Persistido: la lectura recalcula lo mismo.
+    expect((await getWorkflow(ana, id)).body.evaluation).toEqual(approx.body.evaluation);
+    const fp = approx.body.plan.fingerprint;
+    expect((await send(ana.agent, 'put', `/api/projects/${id}/progress`, { fingerprint: fp, completedStepIds: [approx.body.plan.steps[0].id] }, ana.token)).status).toBe(200);
+
+    // Confirmado a mano (mismos valores): viable, nueva revisión y avance anterior obsoleto.
+    const confirmed = await putProfile(ana, id, local);
+    expect(confirmed.body.evaluation.status).toBe('viable');
+    expect(confirmed.body.profile.revision).toBe(approx.body.profile.revision + 1);
+    expect(confirmed.body.plan.fingerprint).not.toBe(fp);
+    expect(confirmed.body.progress).toMatchObject({ stale: true, completedStepIds: [] });
+
+    // Insuficiente declarado: bloqueo con acción de ampliar el equipo.
+    const small = await putProfile(ana, id, { ...local, ramGiB: 2 });
+    expect(small.body.evaluation.status).toBe('insufficient');
+    expect(small.body.evaluation.summary.nextAction).toMatchObject({ code: 'increase-resources', target: 'equipo' });
   });
 
   it('PROFILE_FIELDS coincide con los campos editables del modelo', () => {

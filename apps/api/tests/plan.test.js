@@ -10,7 +10,7 @@ import { DEFAULT_CATALOG_PATH, loadCatalog } from '../src/catalog.js';
 import { migrate, openDatabase } from '../src/db.js';
 import { evaluate, loadRules } from '../src/evaluation.js';
 import { buildPlan, planFingerprint } from '../src/plan.js';
-import { STAGES, TEMPLATES, TEMPLATES_VERSION } from '../src/plan-templates.js';
+import { STAGES, STEP_BLOCKS, TEMPLATES, TEMPLATES_VERSION } from '../src/plan-templates.js';
 import { createProjects } from '../src/projects.js';
 import { parseProgress } from '../src/workflow.js';
 
@@ -72,6 +72,7 @@ describe('buildPlan', () => {
     expect(plan({ profile: { ...PROFILE, revision: 2 } }).fingerprint).not.toBe(base);
     expect(plan({ alternativeIds: ['nextcloud'] }).fingerprint).not.toBe(base);
     expect(plan({ ruleSet: { ...rules, rulesVersion: 'otra' } }).fingerprint).not.toBe(base);
+    expect(TEMPLATES_VERSION).toBe('2026-11-22.2'); // 007: textos nuevos → avance anterior obsoleto
     const fp = planFingerprint({ projectId: PROJECT_ID, alternativeIds: ['a'], profile: { projectId: 'x', b: 1, a: 2 }, rulesVersion: 'r' });
     expect(planFingerprint({ projectId: PROJECT_ID, alternativeIds: ['a'], profile: { a: 2, b: 1 }, rulesVersion: 'r' })).toBe(fp);
   });
@@ -82,9 +83,9 @@ describe('buildPlan', () => {
     expect(step.prompt).toContain('«Wiki <b>familiar</b>»'); // texto plano; la UI lo muestra como texto
     expect(step.prompt).toContain('Otras alternativas del proyecto: Nextcloud.');
     expect(step.prompt).toContain('16 núcleos; 64 GiB de RAM');
-    expect(step.prompt).toMatch(/Restricciones:\n- Explica los pasos/);
+    expect(step.prompt).toMatch(/Reglas para tu respuesta:\n- Explica los pasos/);
     expect(step.prompt).toContain('https://docs.getoutline.com/s/hosting/doc/docker-7pfeLP5a8t');
-    expect(step.prompt).toContain('Validación esperada:');
+    expect(step.prompt).toContain('Cómo comprobar:\n- Se puede iniciar sesión');
     expect(step.prompt).toContain('No es una garantía.');
     expect(step.pending.map((w) => w.code)).toEqual(expect.arrayContaining(['domain-required', 'auth-provider-required']));
     expect(step.prompt).toContain('Outline requiere un dominio o subdominio dedicado.');
@@ -92,6 +93,41 @@ describe('buildPlan', () => {
       expect(s.prompt).toContain(`plan ${p.fingerprint.slice(0, 12)}`);
       expect(s.prompt).not.toMatch(/sk-[A-Za-z0-9]|api[_ ]?key|ssh |sudo |curl |\bhttp:\/\//i);
     }
+  });
+
+  it('FR-007: cada fase de las cinco alternativas tiene objetivo, contexto, precomprobaciones, acciones, seguridad, validación y recuperación', () => {
+    const p = plan({ alternativeIds: ALL });
+    const headings = ['Objetivo: ', 'Contexto relevante:', 'Condiciones pendientes', ...STEP_BLOCKS.map((b) => `${b.label}:`), 'Reglas para tu respuesta:', 'Fuentes oficiales:'];
+    for (const s of p.steps) {
+      for (const key of ['prechecks', 'tasks', 'security', 'validation', 'rollback']) {
+        expect(s[key].length, `${s.id}.${key}`).toBeGreaterThan(0);
+        for (const line of s[key]) expect(s.prompt, `${s.id}.${key}`).toContain(`- ${line}`);
+      }
+      // Bloques en orden fijo, cada uno una sola vez.
+      const positions = headings.map((h) => s.prompt.indexOf(h));
+      expect(positions.every((pos) => pos >= 0), s.id).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      expect(s.prompt).toContain(`Objetivo: ${s.stageLabel} de ${s.alternativeName} — ${s.title}. ${s.explanation}`);
+      // Sin secretos, sin instalación ni acceso remoto automático, sin comandos destructivos.
+      expect(s.prompt).not.toMatch(/sk-[A-Za-z0-9]|api[_ ]?key|\bssh\b|sudo |curl |rm -rf|\bhttp:\/\/|password=/i);
+    }
+    // Seguridad pertinente: bases de datos/Redis no expuestas en instalación con Docker; WireGuard solo el UDP del túnel.
+    expect(p.steps.find((s) => s.id === 'outline.installation').security.join(' ')).toMatch(/No publicar los puertos de PostgreSQL ni de Redis/);
+    expect(p.steps.find((s) => s.id === 'immich.installation').security.join(' ')).toMatch(/PostgreSQL ni de Redis/);
+    expect(p.steps.find((s) => s.id === 'wireguard.installation').security.join(' ')).toMatch(/únicamente el puerto UDP/);
+    expect(p.steps.find((s) => s.id === 'nextcloud.recovery').rollback.join(' ')).toMatch(/entorno separado/);
+    // Las restricciones comunes piden confirmación antes de borrar o sobrescribir.
+    expect(p.steps[0].prompt).toMatch(/borre, sobrescriba o reinicie algo, avísame/);
+  });
+
+  it('el prompt indica el origen guardado de CPU/RAM/disco y marca lo aproximado como pendiente', () => {
+    const profile = { ...PROFILE, revision: 1 };
+    const browser = { source: 'browser', certainty: 'approximate', capturedAt: '2026-11-22T09:00:00.000Z' };
+    const imported = { source: 'import', certainty: 'reported', capturedAt: '2026-11-21T09:00:00.000Z' };
+    const evaluation = evaluate({ profile, alternativeIds: ['nextcloud'], catalogNames, rules, provenance: { ramGiB: browser, storageGiB: imported } });
+    const p = buildPlan({ projectId: PROJECT_ID, projectName: 'Casa', alternativeIds: ['nextcloud'], profile, evaluation, catalogNames });
+    expect(p.steps[0].prompt).toContain('Origen de los datos: CPU declarado a mano; RAM aproximado por el navegador, pendiente de confirmar; Disco importado del diagnóstico.');
+    expect(plan().steps[0].prompt).toContain('Origen de los datos: CPU declarado a mano; RAM declarado a mano; Disco declarado a mano.');
   });
 
   it('WireGuard con instalación nativa y claves locales; Matrix como protocolo y Synapse como servidor', () => {

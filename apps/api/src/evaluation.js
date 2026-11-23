@@ -109,6 +109,54 @@ function warning(rule, alternativeId = null, source = null) {
   return { code: rule.code, severity: rule.severity, alternativeId, text: rule.text, source };
 }
 
+// Certeza por campo (entrega 007, ProfileProvenance.fields). Lo ausente es
+// manual/declared. Un dato aproximado (navegador) nunca permite «viable»: su
+// insuficiencia queda pendiente de confirmar (el navegador puede limitar o
+// redondear a la baja) y su suficiencia no se da por buena.
+const MANUAL = Object.freeze({ source: 'manual', certainty: 'declared' });
+const RESOURCES = [
+  { key: 'cpu', field: 'cpuCores', label: 'CPU', unit: 'núcleos', total: 'cpuCores', name: 'Núcleos' },
+  { key: 'ram', field: 'ramGiB', label: 'RAM', unit: 'GiB', total: 'ramGiB', name: 'RAM' },
+  { key: 'disk', field: 'storageGiB', label: 'Disco', unit: 'GiB', total: 'diskGiB', name: 'Espacio libre' },
+];
+
+function certaintyOf(provenance, field) {
+  const entry = provenance && Object.hasOwn(provenance, field) ? provenance[field] : null;
+  return entry ? { source: entry.source, certainty: entry.certainty } : { ...MANUAL };
+}
+
+const NEXT = {
+  replace: (text) => ({ code: 'replace-alternatives', target: 'proyecto', text }),
+  equipo: (code, text) => ({ code, target: 'equipo', text }),
+  plan: (code, text) => ({ code, target: 'plan', text }),
+};
+
+/** Siguiente acción clara a partir de los avisos ya ordenados (bloqueos primero). */
+function nextAction(ordered, resources) {
+  if (ordered.some((w) => w.code === 'retired-alternative')) {
+    return NEXT.replace('Sustituye en el proyecto las alternativas que ya no están en el catálogo.');
+  }
+  if (ordered.some((w) => w.code === 'requirements-unknown')) {
+    return NEXT.replace('Revisa la selección: hay alternativas sin reglas de requisitos y sus recursos no se suman.');
+  }
+  const short = resources.filter((r) => !r.fits && r.certainty !== 'approximate');
+  if (short.length) {
+    return NEXT.equipo('increase-resources', `Amplía ${short.map((r) => r.label).join(', ')} del equipo, o reduce usuarios, datos previstos o alternativas, y vuelve a guardar.`);
+  }
+  const blocking = ordered.find((w) => w.severity === 'blocking');
+  if (blocking) return NEXT.equipo('review-blocking', `Revisa el equipo o la selección: ${blocking.text}`);
+  if (resources.some((r) => r.certainty === 'approximate')) {
+    return NEXT.equipo('confirm-approximate', 'Confirma CPU y RAM con el diagnóstico de Windows o escribiéndolas a mano, y guarda el equipo.');
+  }
+  if (ordered.some((w) => ['os-unknown', 'architecture-unknown', 'storage-unknown'].includes(w.code))) {
+    return NEXT.equipo('complete-profile', 'Completa en Equipo el sistema operativo, la arquitectura y el tipo de almacenamiento que falten.');
+  }
+  if (ordered.some((w) => w.severity === 'pending')) {
+    return NEXT.plan('resolve-pending', 'Resuelve las condiciones pendientes indicadas en cada paso del plan antes de instalar.');
+  }
+  return NEXT.plan('start-plan', 'Sigue el plan por etapas; empieza por la preparación del servidor.');
+}
+
 /**
  * @param {{
  *   profile: null | { cpuCores:number, ramGiB:number, storageGiB:number, os:string, architecture:string,
@@ -116,10 +164,11 @@ function warning(rule, alternativeId = null, source = null) {
  *   alternativeIds: string[],
  *   catalogNames: Map<string, string>,
  *   rules: ReturnType<typeof validateRules>,
- * }} input
+ *   provenance?: null | Record<string, { source: string, certainty: string }>,
+ * }} input  provenance: ProfileProvenance.fields guardados (ausente = todo manual/declared).
  * @returns {null | object} null si no hay perfil.
  */
-export function evaluate({ profile, alternativeIds, catalogNames, rules }) {
+export function evaluate({ profile, alternativeIds, catalogNames, rules, provenance = null }) {
   if (!profile) return null;
   const loadFactor = profile.users > rules.usersPerLoadStep ? Math.ceil(profile.users / rules.usersPerLoadStep) : 1;
   const warnings = [];
@@ -197,19 +246,45 @@ export function evaluate({ profile, alternativeIds, catalogNames, rules }) {
     },
   };
 
-  // Insuficiencias primero (prioritarias), después condiciones del perfil.
+  // Resumen por recurso con su origen y certeza.
+  const resources = RESOURCES.map((r) => {
+    const { required, available } = totals[r.total];
+    const { source, certainty } = certaintyOf(provenance, r.field);
+    return { key: r.key, label: r.label, unit: r.unit, required, available, fits: available >= required, source, certainty };
+  });
+
+  // Insuficiencias primero (prioritarias), después condiciones del perfil. Con
+  // dato aproximado la falta no se afirma: queda pendiente de confirmar.
   const resource = [];
-  if (profile.ramGiB < ramRequired) {
-    resource.push(warning({ code: 'ram-insufficient', severity: 'blocking', text: `RAM declarada ${fmt(profile.ramGiB)} GiB < ${fmt(ramRequired)} GiB estimados.` }));
-  }
-  if (profile.cpuCores < cpuRequired) {
-    resource.push(warning({ code: 'cpu-insufficient', severity: 'blocking', text: `Núcleos declarados ${profile.cpuCores} < ${fmt(cpuRequired)} estimados.` }));
-  }
-  if (profile.storageGiB < diskRequired) {
-    resource.push(warning({ code: 'disk-insufficient', severity: 'blocking', text: `Espacio libre declarado ${fmt(profile.storageGiB)} GiB < ${fmt(diskRequired)} GiB estimados.` }));
+  const ADJ = { reported: 'informado por el diagnóstico', declared: 'declarado', approximate: 'aproximado por el navegador' };
+  // Orden histórico de los avisos: RAM, CPU, disco.
+  for (const r of ['ram', 'cpu', 'disk'].map((key) => RESOURCES.find((x) => x.key === key))) {
+    const summary = resources.find((s) => s.key === r.key);
+    if (summary.fits) continue;
+    const amount = r.key === 'cpu' ? String(summary.available) : `${fmt(summary.available)} GiB`;
+    const needed = r.key === 'cpu' ? `${fmt(summary.required)} estimados` : `${fmt(summary.required)} GiB estimados`;
+    if (summary.certainty === 'approximate') {
+      resource.push(warning({
+        code: `${r.key}-unconfirmed`,
+        severity: 'pending',
+        text: `${r.name} ${ADJ.approximate} ${amount} < ${needed}: el navegador puede limitar o redondear este dato; confírmalo antes de decidir.`,
+      }));
+    } else {
+      // Mismo texto que antes para datos declarados (compatibilidad); importado lo indica.
+      const label = summary.certainty === 'reported' ? `${r.name} ${ADJ.reported}` : `${r.key === 'cpu' ? 'Núcleos declarados' : r.key === 'ram' ? 'RAM declarada' : 'Espacio libre declarado'}`;
+      resource.push(warning({ code: `${r.key}-insufficient`, severity: 'blocking', text: `${label} ${amount} < ${needed}.` }));
+    }
   }
 
   const general = [];
+  const approximate = resources.filter((r) => r.certainty === 'approximate');
+  if (approximate.length) {
+    general.push(warning({
+      code: 'approximate-data',
+      severity: 'pending',
+      text: `${approximate.map((r) => r.label).join(' y ')} ${approximate.length > 1 ? 'son aproximadas' : 'es aproximada'} (navegador): confírmalo con el diagnóstico o a mano. Con datos aproximados el resultado no puede darse por bueno.`,
+    }));
+  }
   if (profile.os === 'unknown') general.push(warning({ code: 'os-unknown', severity: 'pending', text: 'Sistema operativo desconocido: no se pueden comprobar los requisitos de plataforma.' }));
   if (profile.architecture === 'unknown') general.push(warning({ code: 'architecture-unknown', severity: 'pending', text: 'Arquitectura de CPU desconocida: no se puede comprobar la compatibilidad de imágenes y paquetes.' }));
   if (profile.storageKind === 'unknown') general.push(warning({ code: 'storage-unknown', severity: 'pending', text: 'Tipo de almacenamiento desconocido: no se pueden comprobar los requisitos de disco local.' }));
@@ -243,5 +318,7 @@ export function evaluate({ profile, alternativeIds, catalogNames, rules }) {
     items,
     totals,
     warnings: ordered,
+    // Resumen para leer primero: tres recursos con origen/certeza y una acción siguiente.
+    summary: { resources, nextAction: nextAction(ordered, resources) },
   };
 }

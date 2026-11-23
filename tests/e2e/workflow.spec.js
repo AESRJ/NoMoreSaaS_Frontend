@@ -77,6 +77,9 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   // Evaluación real del servidor.
   await page.getByRole('link', { name: 'Evaluación' }).click();
   await expect(page.getByText('Cabe en el presupuesto orientativo')).toBeVisible();
+  // 007: resumen y siguiente paso primero; fuentes y cálculos en un desplegable.
+  await expect(page.getByRole('heading', { name: 'Siguiente paso' })).toBeVisible();
+  await page.getByText('Ver fuentes y cálculos').click();
   await expect(page.getByText(/RAM requerida = Σ RAM base \(2,25 GiB\)/)).toBeVisible();
   await expect(page.getByText(/ni garantiza que la instalación funcione/)).toBeVisible();
   await expectNoPageOverflow(page);
@@ -89,7 +92,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-evaluacion-${page.viewportSize().width}.png`, fullPage: true });
 
   // Plan: ocho pasos, prompt visible como texto.
-  await page.getByRole('link', { name: 'Plan' }).click();
+  await page.getByRole('link', { name: 'Plan', exact: true }).click();
   await expect(page.getByText('0 de 8 pasos completados.')).toBeVisible();
   const first = page.getByRole('checkbox', { name: /Preparación Preparar el servidor para Nextcloud/ });
   // Sin marcado optimista: la casilla refleja el avance solo cuando el servidor lo confirma.
@@ -97,7 +100,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await expect(first).toBeChecked();
   await expect(page.getByText(/1 de 8 pasos completados/)).toBeVisible();
   await page.getByText('Ver prompt').first().click();
-  await expect(page.locator('.prompt-box__text').first()).toContainText('Contexto: proyecto NoMoreSaaS «Casa autoalojada»');
+  await expect(page.locator('.prompt-box__text').first()).toContainText('Proyecto NoMoreSaaS «Casa autoalojada»');
   await expectNoPageOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-plan-${page.viewportSize().width}.png` });
 
@@ -147,7 +150,7 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await expect(page.locator('.field__origin', { hasText: 'Aproximado' })).toHaveCount(2);
 
   // El cambio de procedencia invalidó el avance anterior.
-  await page.getByRole('link', { name: 'Plan' }).click();
+  await page.getByRole('link', { name: 'Plan', exact: true }).click();
   await expect(page.getByText(/correspondía a otra versión del plan/)).toBeVisible();
   await expect(page.getByText('0 de 8 pasos completados.')).toBeVisible();
 

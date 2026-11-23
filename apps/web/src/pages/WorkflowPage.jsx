@@ -89,6 +89,17 @@ const SEVERITY = {
   info: { label: 'Información', tone: 'info' },
 };
 
+// Bloques de cada paso del plan (007, FR-007), en el orden del prompt. Un
+// servidor anterior sin precomprobaciones/seguridad/recuperación muestra solo
+// los bloques que envía.
+const STEP_BLOCKS = [
+  { key: 'prechecks', label: 'Antes de empezar (solo comprobaciones)' },
+  { key: 'tasks', label: 'Acciones propuestas' },
+  { key: 'security', label: 'Seguridad' },
+  { key: 'validation', label: 'Cómo comprobar' },
+  { key: 'rollback', label: 'Cómo volver atrás' },
+];
+
 const fmt = (n) => (typeof n === 'number' ? new Intl.NumberFormat('es', { maximumFractionDigits: 2 }).format(n) : '—');
 
 function toValues(profile) {
@@ -447,48 +458,129 @@ function WarningList({ warnings }) {
   );
 }
 
-function EvaluationView({ evaluation, dirty }) {
+// Origen/certeza de cada recurso según lo GUARDADO (007). Aproximado nunca
+// equivale a suficiente: queda pendiente de confirmar.
+const ORIGIN = {
+  declared: { label: 'Declarado', badge: 'badge' },
+  reported: { label: 'Importado', badge: 'badge badge--import' },
+  approximate: { label: 'Aproximado', badge: 'badge badge--approximate' },
+};
+const RESOURCE_FALLBACK = [
+  { key: 'cpu', label: 'CPU', unit: 'núcleos', total: 'cpuCores' },
+  { key: 'ram', label: 'RAM', unit: 'GiB', total: 'ramGiB' },
+  { key: 'disk', label: 'Disco', unit: 'GiB', total: 'diskGiB' },
+];
+
+/** Resumen de la API o, de un servidor anterior sin resumen, derivado de los totales (todo declarado). */
+function resourcesOf(evaluation) {
+  if (Array.isArray(evaluation.summary?.resources)) return evaluation.summary.resources;
+  return RESOURCE_FALLBACK.map(({ key, label, unit, total }) => {
+    const { required, available } = evaluation.totals[total];
+    return { key, label, unit, required, available, fits: available >= required, source: 'manual', certainty: 'declared' };
+  });
+}
+
+function verdict(resource) {
+  if (resource.certainty === 'approximate') return resource.fits ? 'Parece suficiente; pendiente de confirmar' : 'Parece insuficiente; pendiente de confirmar';
+  return resource.fits ? 'Suficiente' : 'Insuficiente';
+}
+
+function ResourceSummary({ resources }) {
+  return (
+    <ul className="flow-resources" aria-label="Resumen de CPU, RAM y disco">
+      {resources.map((resource) => {
+        const origin = ORIGIN[resource.certainty] ?? ORIGIN.declared;
+        const tone = resource.certainty === 'approximate' ? 'warn' : resource.fits ? 'ok' : 'danger';
+        return (
+          <li key={resource.key} className={`flow-resource flow-resource--${tone}`}>
+            <div className="flow-resource__head">
+              <h3>{resource.label}</h3>
+              <span className={origin.badge}>{origin.label}</span>
+            </div>
+            <p className="flow-resource__verdict">{verdict(resource)}</p>
+            <p className="flow-resource__numbers">
+              Tu equipo: {fmt(resource.available)} {resource.unit} · Estimado: {fmt(resource.required)} {resource.unit}
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function NextAction({ action, projectId }) {
+  if (!action) return null;
+  const link =
+    action.target === 'proyecto'
+      ? { to: `/proyectos/${projectId}/editar`, label: 'Editar el proyecto' }
+      : action.target === 'plan'
+        ? { to: '?vista=plan', label: 'Ir al plan' }
+        : { to: '?vista=equipo', label: 'Ir a Equipo' };
+  return (
+    <section className="flow-next" aria-labelledby="flow-next-title">
+      <h3 id="flow-next-title">Siguiente paso</h3>
+      <p>{action.text}</p>
+      <Link className="button button--secondary button--small" to={link.to}>
+        {link.label}
+      </Link>
+    </section>
+  );
+}
+
+function EvaluationView({ evaluation, dirty, projectId }) {
   if (!evaluation) return <NeedsProfile />;
   const status = STATUS[evaluation.status] ?? STATUS.pending;
   const { totals } = evaluation;
-  const rows = [
-    ['RAM', totals.ramGiB, 'GiB'],
-    ['CPU', totals.cpuCores, 'núcleos'],
-    ['Disco', totals.diskGiB, 'GiB'],
-  ];
+  const resources = resourcesOf(evaluation);
+  const approximate = resources.filter((r) => r.certainty === 'approximate');
   return (
     <div className="flow-view">
       <UnsavedNotice dirty={dirty} />
       <section className="detail-section" aria-labelledby="flow-eval-status">
         <h2 id="flow-eval-status">Resultado orientativo</h2>
         <p className={`flow-status flow-status--${status.tone}`}>{status.label}</p>
+        {approximate.length > 0 && (
+          <p className="muted">
+            {approximate.map((r) => r.label).join(' y ')} {approximate.length > 1 ? 'son aproximadas' : 'es aproximada'}: hasta que lo confirmes, el resultado no puede darse por bueno.
+          </p>
+        )}
+        <ResourceSummary resources={resources} />
+        <NextAction action={evaluation.summary?.nextAction} projectId={projectId} />
+      </section>
+
+      <section className="detail-section" aria-labelledby="flow-eval-warnings">
+        <h2 id="flow-eval-warnings">Motivos y condiciones</h2>
+        <WarningList warnings={evaluation.warnings} />
+      </section>
+
+      <details className="detail-section flow-details">
+        <summary>Ver fuentes y cálculos</summary>
         <p className="muted">
           Reglas {evaluation.rulesVersion}, fuentes revisadas hasta {evaluation.checkedAt}. {evaluation.editorialSource?.note}
         </p>
-      </section>
-
-      <section className="detail-section" aria-labelledby="flow-eval-totals">
-        <h2 id="flow-eval-totals">Recursos estimados frente a tu equipo</h2>
+        <h3 className="flow-details__title">Recursos estimados frente a tu equipo</h3>
         <div className="table-scroll">
           <table className="flow-totals">
             <thead>
               <tr>
                 <th scope="col">Recurso</th>
                 <th scope="col">Estimado</th>
-                <th scope="col">Declarado</th>
+                <th scope="col">Tu equipo</th>
+                <th scope="col">Origen</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(([label, value, unit]) => (
-                <tr key={label} className={value.available < value.required ? 'flow-totals__short' : undefined}>
-                  <th scope="row">{label}</th>
+              {resources.map((resource) => (
+                <tr key={resource.key} className={resource.fits ? undefined : 'flow-totals__short'}>
+                  <th scope="row">{resource.label}</th>
                   <td>
-                    {fmt(value.required)} {unit}
+                    {fmt(resource.required)} {resource.unit}
                   </td>
                   <td>
-                    {fmt(value.available)} {unit}
-                    {value.available < value.required && <span className="sr-only"> (insuficiente)</span>}
+                    {fmt(resource.available)} {resource.unit}
+                    {!resource.fits && <span className="sr-only"> (insuficiente)</span>}
                   </td>
+                  <td>{(ORIGIN[resource.certainty] ?? ORIGIN.declared).label}</td>
                 </tr>
               ))}
             </tbody>
@@ -499,19 +591,12 @@ function EvaluationView({ evaluation, dirty }) {
             <li key={text}>{text}</li>
           ))}
         </ul>
-      </section>
 
-      <section className="detail-section" aria-labelledby="flow-eval-warnings">
-        <h2 id="flow-eval-warnings">Avisos y condiciones</h2>
-        <WarningList warnings={evaluation.warnings} />
-      </section>
-
-      <section className="detail-section" aria-labelledby="flow-eval-items">
-        <h2 id="flow-eval-items">Desglose por alternativa</h2>
+        <h3 className="flow-details__title">Desglose por alternativa</h3>
         <ul className="flow-items">
           {evaluation.items.map((item) => (
             <li key={item.alternativeId} className="flow-item">
-              <h3>{item.name ?? <ProjectAlternative alternative={{ id: item.alternativeId, available: false }} />}</h3>
+              <h4>{item.name ?? <ProjectAlternative alternative={{ id: item.alternativeId, available: false }} />}</h4>
               {item.status === 'estimated' ? (
                 <>
                   <p>
@@ -539,7 +624,7 @@ function EvaluationView({ evaluation, dirty }) {
             </li>
           ))}
         </ul>
-      </section>
+      </details>
     </div>
   );
 }
@@ -690,19 +775,19 @@ function PlanView({ project, workflow, dirty, onProgress, onReload }) {
                     <span className="flow-step__stage">{step.stageLabel}</span> {step.title}
                   </span>
                 </label>
-                <p>{step.explanation}</p>
-                <h3 className="flow-step__subtitle">Tareas</h3>
-                <ul className="bullet-list">
-                  {step.tasks.map((task) => (
-                    <li key={task}>{task}</li>
-                  ))}
-                </ul>
-                <h3 className="flow-step__subtitle">Comprobación</h3>
-                <ul className="bullet-list">
-                  {step.validation.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
+                <p>
+                  <strong>Objetivo:</strong> {step.explanation}
+                </p>
+                {STEP_BLOCKS.filter((block) => Array.isArray(step[block.key]) && step[block.key].length > 0).map((block) => (
+                  <div key={block.key} className={`flow-step__block flow-step__block--${block.key}`}>
+                    <h3 className="flow-step__subtitle">{block.label}</h3>
+                    <ul className="bullet-list">
+                      {step[block.key].map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
                 {step.pending.length > 0 && (
                   <div className="flow-step__pending">
                     <h3 className="flow-step__subtitle">Condiciones pendientes antes de copiar</h3>
@@ -774,7 +859,7 @@ function WorkflowView({ data, replace, retry }) {
         {VIEWS.find((v) => v.id === view).label}
       </h2>
       {view === 'equipo' && <ProfileForm project={project} workflow={workflow} values={values} setValues={setValues} meta={meta} setMeta={setMeta} onSaved={saved} />}
-      {view === 'evaluacion' && <EvaluationView evaluation={workflow.evaluation} dirty={dirty} />}
+      {view === 'evaluacion' && <EvaluationView evaluation={workflow.evaluation} dirty={dirty} projectId={project.id} />}
       {view === 'plan' && (
         <PlanView
           project={project}
