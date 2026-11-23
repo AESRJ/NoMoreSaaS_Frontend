@@ -1,1 +1,0 @@
-{"processors":{"Name":"Ficticio CPU 8-Core Processor","NumberOfCores":8,"NumberOfLogicalProcessors":16,"Architecture":9},"memory":34359738368,"disks":[{"FreeSpace":214748364800,"Size":512110190592},{"FreeSpace":1099511627776,"Size":2000398934016}],"gpus":[{"Name":"Ficticia GPU 4000"},{"Name":"Ficticia GPU 4000"},{"Name":"Microsoft Basic Display Adapter"}]}

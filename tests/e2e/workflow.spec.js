@@ -10,22 +10,6 @@ test.beforeAll(() => mkdirSync(SCREENSHOT_DIR, { recursive: true }));
 const PASSWORD = 'una frase de paso bastante larga';
 const emailFor = (testInfo) => `flujo-${testInfo.project.name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 
-// Diagnóstico ficticio (esquema v1 de 007); nunca datos del equipo que ejecuta la prueba.
-const DIAGNOSTIC = {
-  schemaVersion: 1,
-  capturedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-  os: 'windows',
-  architecture: 'amd64',
-  cpu: { model: 'Ficticio CPU 8-Core', physicalCores: 8, logicalThreads: 16 },
-  ramBytes: 34359738368,
-  volumes: [
-    { label: 'Volume 1', freeBytes: 214748364800, sizeBytes: 512110190592 },
-    { label: 'Volume 2', freeBytes: 1099511627776, sizeBytes: 2000398934016 },
-  ],
-  gpuNames: ['Ficticia GPU 4000'],
-};
-const jsonFile = (value, name = 'equipo.json') => ({ name, mimeType: 'application/json', buffer: Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)) });
-
 async function expectNoPageOverflow(page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBe(0);
@@ -109,31 +93,11 @@ test('proyecto → equipo → evaluación → plan → avance persistente; 401 s
   await expect(first).toBeChecked();
   await expect(page.getByText(/1 de 8 pasos completados/)).toBeVisible();
 
-  // 007: importar diagnóstico (fixture) con vista previa; inválido no cambia nada.
+  // 007: otro equipo se rellena a mano.
   await page.getByRole('link', { name: 'Equipo', exact: true }).click();
   await page.getByRole('radio', { name: /Otro equipo/ }).check();
-  const file = page.getByLabel('Archivo de diagnóstico (.json)');
-  await file.setInputFiles(jsonFile({ ...DIAGNOSTIC, hostname: 'PC-FICTICIO' }));
-  await expect(page.getByRole('alert')).toContainText('El formulario no ha cambiado');
-  await expect(page.getByLabel('RAM (GiB)')).toHaveValue('8');
-  await file.setInputFiles(jsonFile(DIAGNOSTIC));
-  await expect(page.getByRole('table', { name: 'Vista previa del diagnóstico' })).toBeVisible();
-  await page.getByRole('radio', { name: /Volume 2/ }).check();
-  await expectNoPageOverflow(page);
-  await page.screenshot({ path: `${SCREENSHOT_DIR}flujo-importar-${page.viewportSize().width}.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Aplicar al formulario' }).click();
-  await expect(page.getByLabel('RAM (GiB)')).toHaveValue('32');
-  await expect(page.getByLabel('Espacio libre en disco (GiB)')).toHaveValue('1024');
-  await expect(page.getByLabel('Núcleos de CPU')).toHaveValue('8');
-  // Editar a mano el SO lo vuelve declarado (el resto sigue importado).
-  await page.getByLabel('Sistema operativo del servidor').selectOption('linux');
-  await page.getByRole('button', { name: 'Guardar y recalcular' }).click();
-  await expect(page.getByText(/equipo guardado/i)).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole('radio', { name: /Otro equipo/ })).toBeChecked();
-  await expect(page.getByLabel('RAM (GiB)')).toHaveValue('32');
-  await expect(page.locator('.field__origin', { hasText: 'Importado' })).toHaveCount(4);
-  await expect(page.getByLabel('Sistema operativo del servidor')).toHaveValue('linux');
+  await expect(page.getByRole('button', { name: 'Leer datos de este navegador' })).toHaveCount(0);
+  await page.getByLabel('Espacio libre en disco (GiB)').fill('1024');
 
   // Ayuda del navegador: solo para este equipo y con confirmación; disco no.
   await page.getByRole('radio', { name: /Este equipo/ }).check();
